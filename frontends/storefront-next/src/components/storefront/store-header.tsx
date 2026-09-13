@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { getInstagramUrl, getWhatsappUrl } from "@/lib/contact";
+import { getContactUrl } from "@/lib/contact";
 import { formatPrice } from "@/lib/currency";
 import type { StoreCategory, StoreProduct } from "@/types/storefront";
 import type { TenantConfig } from "@/types/tenant";
@@ -27,12 +27,9 @@ export function StoreHeader({ categories, products, tenant }: StoreHeaderProps) 
   const [query, setQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchTriggerRef = useRef<HTMLButtonElement>(null);
-  const instagramUrl = getInstagramUrl(tenant.instagram);
+  const instagramUrl = getContactUrl(tenant, "INSTAGRAM");
   const brandInitial = tenant.shortName.trim().charAt(0).toLocaleUpperCase("es");
-  const whatsappUrl = getWhatsappUrl(
-    tenant.whatsapp,
-    `Hola ${tenant.shortName}, quisiera hacer una consulta.`,
-  );
+  const whatsappUrl = getContactUrl(tenant, "WHATSAPP");
 
   const results = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase("es");
@@ -211,7 +208,11 @@ export function StoreHeader({ categories, products, tenant }: StoreHeaderProps) 
                       <span className="block text-sm font-medium">{product.name}</span>
                       <span className="block text-xs text-[var(--store-muted)]">{product.material}</span>
                     </span>
-                    <span className="shrink-0 text-sm">{formatPrice(product.price)}</span>
+                    <span className="shrink-0 text-sm">
+                      {tenant.settings.showPrices && product.price !== null && product.sellingMode === "DIRECT"
+                        ? `${product.variants.length > 1 ? "Desde " : ""}${formatPrice(product.price)}`
+                        : "Consultar"}
+                    </span>
                   </a>
                 ))}
               </div>

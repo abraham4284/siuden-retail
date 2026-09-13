@@ -1,4 +1,4 @@
-import { getWhatsappUrl } from "@/lib/contact";
+import { getContactUrl } from "@/lib/contact";
 import type { TenantConfig } from "@/types/tenant";
 import { ArrowRightIcon, WhatsappIcon } from "./icons";
 
@@ -7,10 +7,7 @@ type WhatsappBannerProps = {
 };
 
 export function WhatsappBanner({ tenant }: WhatsappBannerProps) {
-  const whatsappUrl = getWhatsappUrl(
-    tenant.whatsapp,
-    tenant.storefront.whatsapp.message,
-  );
+  const whatsappUrl = getContactUrl(tenant, "WHATSAPP");
 
   return (
     <section className="store-container py-16 sm:py-20 lg:py-28" id="contacto">

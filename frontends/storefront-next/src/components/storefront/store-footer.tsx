@@ -1,4 +1,4 @@
-import { getInstagramUrl, getWhatsappUrl } from "@/lib/contact";
+import { getContactUrl } from "@/lib/contact";
 import type { StoreCategory } from "@/types/storefront";
 import type { TenantConfig } from "@/types/tenant";
 import { InstagramIcon, MapPinIcon, WhatsappIcon } from "./icons";
@@ -9,11 +9,11 @@ type StoreFooterProps = {
 };
 
 export function StoreFooter({ categories, tenant }: StoreFooterProps) {
-  const instagramUrl = getInstagramUrl(tenant.instagram);
+  const instagramUrl = getContactUrl(tenant, "INSTAGRAM");
   const brandInitial = tenant.shortName.trim().charAt(0).toLocaleUpperCase("es");
-  const whatsappUrl = getWhatsappUrl(
-    tenant.whatsapp,
-    `Hola ${tenant.shortName}, quisiera hacer una consulta.`,
+  const whatsappUrl = getContactUrl(tenant, "WHATSAPP");
+  const additionalChannels = tenant.contactChannels.filter(
+    (channel) => channel.enabled && channel.type !== "INSTAGRAM" && channel.type !== "WHATSAPP",
   );
 
   return (
@@ -53,7 +53,7 @@ export function StoreFooter({ categories, tenant }: StoreFooterProps) {
         <div>
           <h2 className="footer-heading">Encontranos</h2>
           <p className="mt-5 flex items-start gap-3 text-sm leading-6 text-white/70">
-            <MapPinIcon className="mt-0.5 size-4 shrink-0 text-[var(--store-accent)]" /> {tenant.location}
+            <MapPinIcon className="mt-0.5 size-4 shrink-0 text-[var(--store-accent)]" /> {[tenant.addressLine, tenant.addressNumber, tenant.city, tenant.province].filter(Boolean).join(", ")}
           </p>
           <div className="mt-6 flex items-center gap-3">
             {instagramUrl ? (
@@ -74,6 +74,14 @@ export function StoreFooter({ categories, tenant }: StoreFooterProps) {
                 <WhatsappIcon className="size-[1.15rem]" />
               </span>
             )}
+          </div>
+          <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2 text-sm text-white/70">
+            {additionalChannels.map((channel) => (
+              <a className="footer-link" href={channel.url} key={`${channel.type}-${channel.sortOrder}`} rel="noreferrer" target="_blank">
+                {channel.type === "FACEBOOK" ? "Facebook" : channel.value}
+              </a>
+            ))}
+            {tenant.contactEmail ? <a className="footer-link" href={`mailto:${tenant.contactEmail}`}>{tenant.contactEmail}</a> : null}
           </div>
         </div>
       </div>

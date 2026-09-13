@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { getInstagramUrl, getWhatsappUrl } from "@/lib/contact";
+import { getContactUrl } from "@/lib/contact";
 import type { StoreCategory } from "@/types/storefront";
 import type { TenantConfig } from "@/types/tenant";
 import { CloseIcon, InstagramIcon, WhatsappIcon } from "./icons";
@@ -17,11 +17,8 @@ export function MobileMenu({ categories, isOpen, onClose, tenant }: MobileMenuPr
   const panelRef = useRef<HTMLElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
-  const instagramUrl = getInstagramUrl(tenant.instagram);
-  const whatsappUrl = getWhatsappUrl(
-    tenant.whatsapp,
-    `Hola ${tenant.shortName}, quisiera hacer una consulta.`,
-  );
+  const instagramUrl = getContactUrl(tenant, "INSTAGRAM");
+  const whatsappUrl = getContactUrl(tenant, "WHATSAPP");
 
   useEffect(() => {
     if (!isOpen) {

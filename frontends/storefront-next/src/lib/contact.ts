@@ -1,19 +1,15 @@
-export const getWhatsappUrl = (number: string | undefined, message: string) => {
-  const normalizedNumber = number?.replace(/\D/g, "");
+import type { StoreContactChannel, TenantConfig } from "@/types/tenant";
 
-  if (!normalizedNumber) {
-    return undefined;
-  }
+export const getContactChannel = (
+  tenant: TenantConfig,
+  type: StoreContactChannel["type"],
+) =>
+  tenant.contactChannels
+    .filter((channel) => channel.enabled)
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .find((channel) => channel.type === type);
 
-  return `https://wa.me/${normalizedNumber}?text=${encodeURIComponent(message)}`;
-};
-
-export const getInstagramUrl = (instagram: string | undefined) => {
-  if (!instagram) {
-    return undefined;
-  }
-
-  return instagram.startsWith("http")
-    ? instagram
-    : `https://instagram.com/${instagram.replace(/^@/, "")}`;
-};
+export const getContactUrl = (
+  tenant: TenantConfig,
+  type: StoreContactChannel["type"],
+) => getContactChannel(tenant, type)?.url;

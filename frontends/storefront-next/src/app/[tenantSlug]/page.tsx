@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: TenantPageProps): Promise<Met
 
   return {
     title: { absolute: store.tenant.name },
-    description: `Joyas seleccionadas y atención personalizada en ${store.tenant.location}.`,
+    description: `Joyas seleccionadas y atención personalizada en ${store.tenant.city ?? "Argentina"}.`,
   };
 }
 

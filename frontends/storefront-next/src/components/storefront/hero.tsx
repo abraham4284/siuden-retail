@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { getWhatsappUrl } from "@/lib/contact";
+import { getContactUrl } from "@/lib/contact";
 import type { TenantConfig } from "@/types/tenant";
 import { ArrowRightIcon, WhatsappIcon } from "./icons";
 
@@ -8,10 +8,7 @@ type HeroProps = {
 };
 
 export function Hero({ tenant }: HeroProps) {
-  const whatsappUrl = getWhatsappUrl(
-    tenant.whatsapp,
-    tenant.storefront.whatsapp.message,
-  );
+  const whatsappUrl = getContactUrl(tenant, "WHATSAPP");
 
   return (
     <section className="store-container scroll-mt-32 py-5 sm:py-8 lg:py-12" id="inicio">

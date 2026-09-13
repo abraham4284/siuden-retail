@@ -30,7 +30,7 @@ export function CategoryGrid({ categories, tenantName }: CategoryGridProps) {
               className={`object-cover transition-transform duration-700 motion-safe:group-hover:scale-[1.04] ${index === 2 ? "object-left" : index === 3 ? "object-right" : "object-center"}`}
               fill
               sizes={index === 0 ? "(max-width: 767px) 100vw, 50vw" : "(max-width: 767px) 50vw, 25vw"}
-              src={category.imageUrl}
+              src={category.imageUrl ?? "/images/tenants/rubi/products/joyas-oro.webp"}
             />
             <span className="absolute inset-0 bg-black/20 transition-colors group-hover:bg-black/30" />
             <span className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-5 text-white sm:p-7">

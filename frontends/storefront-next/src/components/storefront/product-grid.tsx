@@ -7,10 +7,11 @@ type ProductGridProps = {
   eyebrow: string;
   id?: string;
   products: StoreProduct[];
+  showPrices: boolean;
   title: string;
 };
 
-export function ProductGrid({ eyebrow, id, products, title }: ProductGridProps) {
+export function ProductGrid({ eyebrow, id, products, showPrices, title }: ProductGridProps) {
   return (
     <section className="store-container scroll-mt-32 py-16 sm:py-20 lg:py-28" id={id}>
       <SectionHeading
@@ -22,9 +23,9 @@ export function ProductGrid({ eyebrow, id, products, title }: ProductGridProps) 
         eyebrow={eyebrow}
         title={title}
       />
-      <div className="grid grid-cols-1 gap-x-3 gap-y-10 min-[360px]:grid-cols-2 sm:gap-x-6 sm:gap-y-12 md:grid-cols-3 xl:grid-cols-4 xl:gap-x-7">
+      <div className="product-grid grid grid-cols-1 gap-x-3 gap-y-10 min-[360px]:grid-cols-2 sm:gap-x-6 sm:gap-y-12 md:grid-cols-3 xl:gap-x-7">
         {products.map((product, index) => (
-          <ProductCard imageVariant={index} key={product.id} product={product} />
+          <ProductCard imageVariant={index} key={product.id} product={product} showPrices={showPrices} />
         ))}
       </div>
     </section>

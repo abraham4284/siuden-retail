@@ -1,4 +1,4 @@
-import { getWhatsappUrl } from "@/lib/contact";
+import { getContactUrl } from "@/lib/contact";
 import type { TenantConfig } from "@/types/tenant";
 import { WhatsappIcon } from "./icons";
 
@@ -7,10 +7,7 @@ type WhatsappFloatingButtonProps = {
 };
 
 export function WhatsappFloatingButton({ tenant }: WhatsappFloatingButtonProps) {
-  const whatsappUrl = getWhatsappUrl(
-    tenant.whatsapp,
-    `Hola ${tenant.shortName}, quisiera hacer una consulta.`,
-  );
+  const whatsappUrl = getContactUrl(tenant, "WHATSAPP");
 
   if (!whatsappUrl) {
     return null;
