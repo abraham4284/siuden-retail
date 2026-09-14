@@ -31,6 +31,9 @@ export type StoreContactChannel = {
 };
 
 export type TenantStorefrontContent = {
+  account?: {
+    enabled: boolean;
+  };
   hero: {
     eyebrow: string;
     title: string;

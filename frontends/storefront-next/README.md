@@ -1,6 +1,8 @@
 # Rubí Joyería — Storefront
 
-Página pública multi-tenant construida con Next.js, TypeScript y Tailwind CSS. En esta primera iteración, `/` y `/rubi/` renderizan la tienda de Rubí con un read model local alineado con el dominio del administrador.
+Página pública multi-tenant construida con Next.js, TypeScript y Tailwind CSS. `/` y `/rubi/` renderizan la tienda de Rubí con un read model local alineado con el dominio del administrador. Las categorías tienen rutas estáticas jerárquicas —por ejemplo, `/oro-18kt/pulseras/` y `/rubi/oro-18kt/pulseras/`— con catálogo, orden y paginación en el cliente.
+
+El encabezado incluye modales locales de creación de cuenta e inicio de sesión, accesibles también mediante `#register-modal` y `#login-modal`. Los formularios no persisten credenciales hasta que exista un servicio de autenticación de clientes en el backend.
 
 ## Desarrollo
 
@@ -9,7 +11,7 @@ pnpm install
 npm run dev
 ```
 
-Abrí `http://localhost:3000/rubi/`.
+Abrí `http://localhost:3000/rubi/` o `http://127.0.0.1:3000/`. Ambos orígenes admiten HMR durante el desarrollo.
 
 ## Exportación estática
 

@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { getCategoryHref, getCategoryTree, type CategoryNode } from "@/lib/categories";
 import { getContactUrl } from "@/lib/contact";
 import { formatPrice } from "@/lib/currency";
 import type { StoreCategory, StoreProduct } from "@/types/storefront";
@@ -13,23 +15,53 @@ import {
   SearchIcon,
   WhatsappIcon,
 } from "./icons";
+import { AuthModal, type AuthView } from "./auth-modal";
 import { MobileMenu } from "./mobile-menu";
 
 type StoreHeaderProps = {
-  categories: StoreCategory[];
+  allCategories: StoreCategory[];
+  basePath?: string;
   products: StoreProduct[];
   tenant: TenantConfig;
 };
 
-export function StoreHeader({ categories, products, tenant }: StoreHeaderProps) {
+type CategoryMenuItemsProps = {
+  allCategories: StoreCategory[];
+  basePath: string;
+  nodes: CategoryNode[];
+};
+
+function CategoryMenuItems({ allCategories, basePath, nodes }: CategoryMenuItemsProps) {
+  return nodes.map((node) => (
+    <div className="group/category-item relative" key={node.id}>
+      <Link
+        className="flex min-h-11 items-center justify-between gap-4 px-4 py-2.5 text-sm transition-colors hover:bg-[var(--store-background)] hover:text-[var(--store-primary)]"
+        href={getCategoryHref(node, allCategories, basePath)}
+      >
+        {node.name}
+        {node.children.length > 0 ? <ChevronDownIcon className="size-4 -rotate-90" /> : null}
+      </Link>
+      {node.children.length > 0 ? (
+        <div className="absolute left-full top-0 z-10 hidden min-w-56 border-l border-[var(--store-hairline)] bg-[var(--store-surface)] p-2 shadow-[0_18px_45px_var(--store-shadow)] group-hover/category-item:block group-focus-within/category-item:block">
+          <CategoryMenuItems allCategories={allCategories} basePath={basePath} nodes={node.children} />
+        </div>
+      ) : null}
+    </div>
+  ));
+}
+
+export function StoreHeader({ allCategories, basePath = "", products, tenant }: StoreHeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [authView, setAuthView] = useState<AuthView | null>(null);
   const [query, setQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchTriggerRef = useRef<HTMLButtonElement>(null);
   const instagramUrl = getContactUrl(tenant, "INSTAGRAM");
   const brandInitial = tenant.shortName.trim().charAt(0).toLocaleUpperCase("es");
   const whatsappUrl = getContactUrl(tenant, "WHATSAPP");
+  const categoryTree = useMemo(() => getCategoryTree(allCategories), [allCategories]);
+  const homeHref = basePath ? `${basePath}/` : "/";
 
   const results = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase("es");
@@ -52,6 +84,17 @@ export function StoreHeader({ categories, products, tenant }: StoreHeaderProps) 
       searchInputRef.current?.focus();
     }
   }, [isSearchOpen]);
+
+  useEffect(() => {
+    const syncAuthViewWithHash = () => {
+      if (window.location.hash === "#register-modal") setAuthView("register");
+      if (window.location.hash === "#login-modal") setAuthView("login");
+    };
+
+    syncAuthViewWithHash();
+    window.addEventListener("hashchange", syncAuthViewWithHash);
+    return () => window.removeEventListener("hashchange", syncAuthViewWithHash);
+  }, []);
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -79,14 +122,42 @@ export function StoreHeader({ categories, products, tenant }: StoreHeaderProps) 
     }
   };
 
+  const openAuth = (view: AuthView) => {
+    setIsMenuOpen(false);
+    closeSearch(false);
+    setAuthView(view);
+    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${view}-modal`);
+  };
+
+  const closeAuth = () => {
+    setAuthView(null);
+
+    if (["#register-modal", "#login-modal"].includes(window.location.hash)) {
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+    }
+  };
+
   return (
     <>
       <header className="store-header sticky top-0 z-40 border-b border-[var(--store-hairline)] backdrop-blur-md">
+        {tenant.storefront.account?.enabled ? (
+          <div className="border-b border-[var(--store-hairline)] bg-[var(--store-surface)]/80">
+            <div className="store-container flex min-h-9 items-center justify-end gap-2 text-xs text-[var(--store-muted)] sm:justify-start sm:text-sm">
+              <button className="transition-colors hover:text-[var(--store-primary)] hover:underline" onClick={() => openAuth("register")} type="button">
+                Crear cuenta
+              </button>
+              <span aria-hidden="true">|</span>
+              <button className="transition-colors hover:text-[var(--store-primary)] hover:underline" onClick={() => openAuth("login")} type="button">
+                Iniciar sesión
+              </button>
+            </div>
+          </div>
+        ) : null}
         <div className="store-container flex h-[4.75rem] items-center justify-between gap-6 lg:h-24">
-          <a
+          <Link
             aria-label={`${tenant.name}, inicio`}
             className="group flex shrink-0 items-center gap-3"
-            href="#inicio"
+            href={`${homeHref}#inicio`}
           >
             <span className="grid size-9 place-items-center rounded-full border border-[var(--store-accent)] font-[family-name:var(--store-heading-font)] text-xl italic text-[var(--store-primary)] transition-colors group-hover:bg-[var(--store-primary)] group-hover:text-white">
               {brandInitial}
@@ -94,28 +165,20 @@ export function StoreHeader({ categories, products, tenant }: StoreHeaderProps) 
             <span className="font-[family-name:var(--store-heading-font)] text-[1.65rem] tracking-[0.08em] sm:text-[1.8rem]">
               {tenant.shortName}
             </span>
-          </a>
+          </Link>
 
           <nav aria-label="Navegación principal" className="hidden items-center gap-8 text-sm lg:flex xl:gap-10">
-            <a className="nav-link" href="#inicio">Inicio</a>
-            <a className="nav-link" href="#productos">Productos</a>
+            <Link className="nav-link" href={`${homeHref}#inicio`}>Inicio</Link>
+            <Link className="nav-link" href={`${homeHref}#productos`}>Productos</Link>
             <details className="category-menu relative">
               <summary className="nav-link flex cursor-pointer list-none items-center gap-1.5">
                 Categorías <ChevronDownIcon className="size-4" />
               </summary>
-              <div className="absolute left-1/2 top-[calc(100%+1.5rem)] w-56 -translate-x-1/2 bg-[var(--store-surface)] p-3 shadow-[0_18px_45px_var(--store-shadow)]">
-                {categories.map((category) => (
-                  <a
-                    className="block px-4 py-2.5 text-sm transition-colors hover:bg-[var(--store-background)] hover:text-[var(--store-primary)]"
-                    href={`#categoria-${category.slug}`}
-                    key={category.id}
-                  >
-                    {category.name}
-                  </a>
-                ))}
+              <div className="absolute left-1/2 top-[calc(100%+1.5rem)] w-56 -translate-x-1/2 bg-[var(--store-surface)] p-2 shadow-[0_18px_45px_var(--store-shadow)]">
+                <CategoryMenuItems allCategories={allCategories} basePath={basePath} nodes={categoryTree} />
               </div>
             </details>
-            <a className="nav-link" href="#contacto">Contacto</a>
+            <Link className="nav-link" href={`${homeHref}#contacto`}>Contacto</Link>
           </nav>
 
           <div className="flex items-center gap-1 sm:gap-2">
@@ -198,9 +261,9 @@ export function StoreHeader({ categories, products, tenant }: StoreHeaderProps) 
             {results.length > 0 ? (
               <div className="grid gap-x-8 sm:grid-cols-2">
                 {results.map((product) => (
-                  <a
+                  <Link
                     className="flex items-center justify-between gap-4 border-b border-[var(--store-hairline)] py-3 hover:text-[var(--store-primary)]"
-                    href={`#producto-${product.slug}`}
+                    href={`${homeHref}#producto-${product.slug}`}
                     key={product.id}
                     onClick={() => closeSearch()}
                   >
@@ -213,7 +276,7 @@ export function StoreHeader({ categories, products, tenant }: StoreHeaderProps) 
                         ? `${product.variants.length > 1 ? "Desde " : ""}${formatPrice(product.price)}`
                         : "Consultar"}
                     </span>
-                  </a>
+                  </Link>
                 ))}
               </div>
             ) : (
@@ -226,11 +289,13 @@ export function StoreHeader({ categories, products, tenant }: StoreHeaderProps) 
       </header>
 
       <MobileMenu
-        categories={categories}
+        allCategories={allCategories}
+        basePath={basePath}
         isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
         tenant={tenant}
       />
+      {authView ? <AuthModal onClose={closeAuth} onViewChange={openAuth} view={authView} /> : null}
     </>
   );
 }

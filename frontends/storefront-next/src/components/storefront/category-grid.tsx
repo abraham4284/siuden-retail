@@ -1,14 +1,18 @@
 import Image from "next/image";
+import Link from "next/link";
+import { getCategoryHref } from "@/lib/categories";
 import type { StoreCategory } from "@/types/storefront";
 import { ArrowRightIcon } from "./icons";
 import { SectionHeading } from "./section-heading";
 
 type CategoryGridProps = {
+  allCategories: StoreCategory[];
+  basePath?: string;
   categories: StoreCategory[];
   tenantName: string;
 };
 
-export function CategoryGrid({ categories, tenantName }: CategoryGridProps) {
+export function CategoryGrid({ allCategories, basePath = "", categories, tenantName }: CategoryGridProps) {
   return (
     <section className="store-container scroll-mt-32 py-16 sm:py-20 lg:py-28" id="categorias">
       <SectionHeading
@@ -18,10 +22,10 @@ export function CategoryGrid({ categories, tenantName }: CategoryGridProps) {
       />
       <div className="category-grid">
         {categories.map((category, index) => (
-          <a
+          <Link
             aria-label={`Ver productos de ${category.name}`}
             className={`category-card group ${index === 0 ? "category-card-featured" : ""}`}
-            href="#productos"
+            href={getCategoryHref(category, allCategories, basePath)}
             id={`categoria-${category.slug}`}
             key={category.id}
           >
@@ -46,7 +50,7 @@ export function CategoryGrid({ categories, tenantName }: CategoryGridProps) {
                 <ArrowRightIcon className="size-4" />
               </span>
             </span>
-          </a>
+          </Link>
         ))}
       </div>
     </section>

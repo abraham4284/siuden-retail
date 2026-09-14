@@ -1,24 +1,61 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef } from "react";
+import { getCategoryHref, getCategoryTree, type CategoryNode } from "@/lib/categories";
 import { getContactUrl } from "@/lib/contact";
 import type { StoreCategory } from "@/types/storefront";
 import type { TenantConfig } from "@/types/tenant";
 import { CloseIcon, InstagramIcon, WhatsappIcon } from "./icons";
 
 type MobileMenuProps = {
-  categories: StoreCategory[];
+  allCategories: StoreCategory[];
+  basePath?: string;
   isOpen: boolean;
   onClose: () => void;
   tenant: TenantConfig;
 };
 
-export function MobileMenu({ categories, isOpen, onClose, tenant }: MobileMenuProps) {
+type MobileCategoryLinksProps = {
+  allCategories: StoreCategory[];
+  basePath: string;
+  depth?: number;
+  nodes: CategoryNode[];
+  onClose: () => void;
+};
+
+function MobileCategoryLinks({ allCategories, basePath, depth = 0, nodes, onClose }: MobileCategoryLinksProps) {
+  return nodes.map((node) => (
+    <div key={node.id}>
+      <Link
+        className="block py-1.5"
+        href={getCategoryHref(node, allCategories, basePath)}
+        onClick={onClose}
+        style={{ paddingLeft: `${depth * 0.8}rem` }}
+      >
+        {node.name}
+      </Link>
+      {node.children.length > 0 ? (
+        <MobileCategoryLinks
+          allCategories={allCategories}
+          basePath={basePath}
+          depth={depth + 1}
+          nodes={node.children}
+          onClose={onClose}
+        />
+      ) : null}
+    </div>
+  ));
+}
+
+export function MobileMenu({ allCategories, basePath = "", isOpen, onClose, tenant }: MobileMenuProps) {
   const panelRef = useRef<HTMLElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const instagramUrl = getContactUrl(tenant, "INSTAGRAM");
   const whatsappUrl = getContactUrl(tenant, "WHATSAPP");
+  const categoryTree = getCategoryTree(allCategories);
+  const homeHref = basePath ? `${basePath}/` : "/";
 
   useEffect(() => {
     if (!isOpen) {
@@ -101,22 +138,18 @@ export function MobileMenu({ categories, isOpen, onClose, tenant }: MobileMenuPr
         </div>
 
         <nav aria-label="Navegación móvil" className="flex flex-col gap-5 py-8 text-lg">
-          <a href="#inicio" onClick={onClose}>Inicio</a>
-          <a href="#productos" onClick={onClose}>Productos</a>
-          <a href="#categorias" onClick={onClose}>Categorías</a>
-          <a href="#contacto" onClick={onClose}>Contacto</a>
+          <Link href={`${homeHref}#inicio`} onClick={onClose}>Inicio</Link>
+          <Link href={`${homeHref}#productos`} onClick={onClose}>Productos</Link>
+          <Link href={`${homeHref}#categorias`} onClick={onClose}>Categorías</Link>
+          <Link href={`${homeHref}#contacto`} onClick={onClose}>Contacto</Link>
         </nav>
 
         <div className="border-t border-[var(--store-hairline)] pt-6">
           <p className="mb-4 text-xs font-medium uppercase tracking-[0.16em] text-[var(--store-muted)]">
             Explorar por categoría
           </p>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-            {categories.map((category) => (
-              <a key={category.id} href={`#categoria-${category.slug}`} onClick={onClose}>
-                {category.name}
-              </a>
-            ))}
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+            <MobileCategoryLinks allCategories={allCategories} basePath={basePath} nodes={categoryTree} onClose={onClose} />
           </div>
         </div>
 

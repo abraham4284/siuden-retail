@@ -92,17 +92,17 @@ export const getTenantStoreData = (tenantSlug: string) => {
       .map(toStoreProduct)
       .filter((product): product is StoreProduct => product !== null);
 
+    const allCategories = rubiCategories
+      .filter((category) => category.tenantId === tenant.id && category.isVisible)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+
     return {
       tenant,
-      categories: rubiCategories
-        .filter(
-          (category) =>
-            category.tenantId === tenant.id && category.isVisible && category.parentId === null,
-        )
-        .sort((a, b) => a.sortOrder - b.sortOrder),
+      allCategories,
+      categories: allCategories.filter((category) => category.parentId === null),
       products: sortProducts(products, tenant.settings),
     };
   }
 
-  return { tenant, categories: [], products: [] };
+  return { tenant, allCategories: [], categories: [], products: [] };
 };

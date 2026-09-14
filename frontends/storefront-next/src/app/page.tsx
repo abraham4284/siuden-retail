@@ -8,5 +8,5 @@ export default function HomePage() {
     return null;
   }
 
-  return <TenantStorefront {...store} />;
+  return <TenantStorefront {...store} basePath="" />;
 }

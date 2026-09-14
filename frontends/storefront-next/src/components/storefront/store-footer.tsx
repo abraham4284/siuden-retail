@@ -1,20 +1,25 @@
+import Link from "next/link";
 import { getContactUrl } from "@/lib/contact";
+import { getCategoryHref } from "@/lib/categories";
 import type { StoreCategory } from "@/types/storefront";
 import type { TenantConfig } from "@/types/tenant";
 import { InstagramIcon, MapPinIcon, WhatsappIcon } from "./icons";
 
 type StoreFooterProps = {
+  allCategories: StoreCategory[];
+  basePath?: string;
   categories: StoreCategory[];
   tenant: TenantConfig;
 };
 
-export function StoreFooter({ categories, tenant }: StoreFooterProps) {
+export function StoreFooter({ allCategories, basePath = "", categories, tenant }: StoreFooterProps) {
   const instagramUrl = getContactUrl(tenant, "INSTAGRAM");
   const brandInitial = tenant.shortName.trim().charAt(0).toLocaleUpperCase("es");
   const whatsappUrl = getContactUrl(tenant, "WHATSAPP");
   const additionalChannels = tenant.contactChannels.filter(
     (channel) => channel.enabled && channel.type !== "INSTAGRAM" && channel.type !== "WHATSAPP",
   );
+  const homeHref = basePath ? `${basePath}/` : "/";
 
   return (
     <footer className="bg-[var(--store-secondary)] text-white">
@@ -32,10 +37,10 @@ export function StoreFooter({ categories, tenant }: StoreFooterProps) {
         <div>
           <h2 className="footer-heading">Navegación</h2>
           <nav aria-label="Navegación del pie" className="mt-5 flex flex-col gap-3 text-sm text-white/70">
-            <a className="footer-link" href="#inicio">Inicio</a>
-            <a className="footer-link" href="#productos">Productos</a>
-            <a className="footer-link" href="#novedades">Novedades</a>
-            <a className="footer-link" href="#contacto">Contacto</a>
+            <Link className="footer-link" href={`${homeHref}#inicio`}>Inicio</Link>
+            <Link className="footer-link" href={`${homeHref}#productos`}>Productos</Link>
+            <Link className="footer-link" href={`${homeHref}#novedades`}>Novedades</Link>
+            <Link className="footer-link" href={`${homeHref}#contacto`}>Contacto</Link>
           </nav>
         </div>
 
@@ -43,9 +48,9 @@ export function StoreFooter({ categories, tenant }: StoreFooterProps) {
           <h2 className="footer-heading">Categorías</h2>
           <nav aria-label="Categorías del pie" className="mt-5 flex flex-col gap-3 text-sm text-white/70">
             {categories.map((category) => (
-              <a className="footer-link" href={`#categoria-${category.slug}`} key={category.id}>
+              <Link className="footer-link" href={getCategoryHref(category, allCategories, basePath)} key={category.id}>
                 {category.name}
-              </a>
+              </Link>
             ))}
           </nav>
         </div>

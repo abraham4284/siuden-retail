@@ -69,6 +69,9 @@ export const rubiTenant: TenantConfig = {
     },
   ],
   storefront: {
+    account: {
+      enabled: true,
+    },
     hero: {
       eyebrow: "Selección Rubí · Tucumán",
       title: "Joyas que acompañan tu historia",
