@@ -7,6 +7,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
+import { readCookie } from '../../common/utils/cookies';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthenticatedUser, RequestWithUser } from '../auth.types';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
@@ -89,14 +90,6 @@ export class JwtAuthGuard implements CanActivate {
   private extractToken(request: Request): string | undefined {
     const [type, token] = request.headers.authorization?.split(' ') ?? [];
     if (type === 'Bearer') return token;
-    const cookies = request.headers.cookie?.split(';') ?? [];
-    const accessTokenCookie = cookies.find(
-      (cookie) => cookie.trim().split('=')[0] === 'siuden_admin_access_token',
-    );
-    return accessTokenCookie
-      ? decodeURIComponent(
-          accessTokenCookie.trim().slice(accessTokenCookie.indexOf('=') + 1),
-        )
-      : undefined;
+    return readCookie(request.headers.cookie, 'siuden_admin_access_token');
   }
 }

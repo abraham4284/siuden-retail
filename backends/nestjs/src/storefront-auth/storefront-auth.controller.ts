@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { Public } from '../auth/decorators/public.decorator';
+import { readCookie } from '../common/utils/cookies';
 import {
   StorefrontLoginDto,
   StorefrontRegisterDto,
@@ -42,7 +43,9 @@ export class StorefrontAuthController {
 
   @Get('me')
   me(@Req() request: Request) {
-    return this.auth.sessionFromToken(this.readCookie(request));
+    return this.auth.sessionFromToken(
+      readCookie(request.headers.cookie, COOKIE_NAME),
+    );
   }
 
   @Post('logout')
@@ -65,14 +68,5 @@ export class StorefrontAuthController {
       sameSite: 'lax' as const,
       path: '/',
     };
-  }
-
-  private readCookie(request: Request): string | undefined {
-    const cookie = request.headers.cookie
-      ?.split(';')
-      .find((entry) => entry.trim().split('=')[0] === COOKIE_NAME);
-    return cookie
-      ? decodeURIComponent(cookie.trim().slice(cookie.indexOf('=') + 1))
-      : undefined;
   }
 }
