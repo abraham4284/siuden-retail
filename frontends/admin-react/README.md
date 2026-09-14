@@ -1,6 +1,6 @@
 # Siuden Retail · Administrador
 
-SPA administrativa de Siuden Retail para el comercio Rubí Joyería. El prototipo reúne dashboard, catálogo, inventario, clientes, ventas, punto de venta y configuración del comercio con una API simulada persistente.
+SPA administrativa de Siuden Retail para el comercio Rubí Joyería. El login, la restauración de sesión, el logout y la administración global de cuentas ya consumen la API NestJS. Los módulos comerciales continúan detrás del repositorio mock durante la migración progresiva.
 
 ## Stack
 
@@ -30,14 +30,9 @@ npm run preview
 
 `npm run build` genera la SPA estática en `dist/`. `npm run preview` sirve esa compilación localmente.
 
-## Acceso de demostración
+## Acceso
 
-```text
-Email: admin@rubi.local
-Contraseña: demo123
-```
-
-Estas credenciales son exclusivamente ficticias y no representan acceso al sistema anterior ni a servicios reales.
+Con `VITE_USE_MOCKS=false`, usar el administrador creado por `backends/nestjs/prisma/seed.ts`. La contraseña nunca se incluye en este repositorio. NestJS entrega la sesión mediante una cookie `HttpOnly`, y el navegador restaura el acceso con `GET /api/v1/auth/me` sin guardar el bearer token en `localStorage`.
 
 ## Datos simulados y persistencia
 
@@ -60,22 +55,22 @@ Componente React
 
 Las pantallas no importan datos simulados directamente. Las query keys comerciales incluyen el tenant obtenido de la sesión.
 
-### Sustitución futura por NestJS
+### Integración progresiva con NestJS
 
-Para conectar `api.siuden.com`, implementá un adaptador `Services` en `src/services/http-services.ts` usando los contratos existentes y reemplazá la instancia exportada como `services` en `src/services/index.ts`. Los componentes y `src/hooks/use-services.ts` no deberían necesitar cambios. `src/services/mock-repository.ts` y `src/mocks/seed.ts` pueden conservarse para demo y desarrollo local.
+`src/services/http-services.ts` implementa actualmente `auth` y `accounts`. `src/services/index.ts` lo selecciona cuando `VITE_USE_MOCKS=false` y conserva el repositorio mock como adaptador temporal para dashboard, catálogo, inventario, clientes, ventas y configuración. Al migrar cada dominio, se reemplaza únicamente esa sección del contrato `Services`.
 
-La autenticación HTTP debe restaurarse mediante `GET /api/auth/me` y cookie segura `HttpOnly`; no se deben guardar bearer tokens en `localStorage`.
+La ruta `/accounts` aparece únicamente para `PLATFORM_ADMIN`, lista las cuentas reales y crea cuenta, tenant, roles y propietario mediante `POST /api/v1/accounts`.
 
 ## Variables de entorno
 
 Copiá `.env.example` como `.env.local` y ajustá:
 
 ```env
-VITE_API_BASE_URL=http://localhost:3000/api
-VITE_USE_MOCKS=true
+VITE_API_BASE_URL=http://localhost:3001/api/v1
+VITE_USE_MOCKS=false
 ```
 
-El prototipo actual usa mocks. En la integración HTTP, `VITE_API_BASE_URL` define la base de NestJS y `VITE_USE_MOCKS=false` debe seleccionar el adaptador HTTP desde `src/services/index.ts`.
+`VITE_API_BASE_URL` define la base de NestJS. Usar `VITE_USE_MOCKS=true` solamente para la demostración completamente local; con `false`, autenticación y cuentas son reales.
 
 ## Fallback de SPA
 

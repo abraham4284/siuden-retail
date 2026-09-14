@@ -1,6 +1,6 @@
 export type ISODateString = string;
 
-export type UserRole = "OWNER" | "ADMIN" | "SELLER" | "STOCK_MANAGER";
+export type UserRole = "PLATFORM_ADMIN" | "OWNER" | "ADMIN" | "SELLER" | "STOCK_MANAGER";
 
 export type AccountStatus = "TRIAL" | "ACTIVE" | "SUSPENDED" | "CANCELLED";
 export type UserStatus = "PENDING" | "ACTIVE" | "BLOCKED" | "DISABLED";
@@ -24,7 +24,10 @@ export type PermissionCode =
   | "pos.use"
   | "orders.manage"
   | "users.manage"
-  | "roles.manage";
+  | "roles.manage"
+  | "purchases.read"
+  | "purchases.write"
+  | "accounts.manage";
 
 export type TenantFeatureCode =
   | "CATALOG"

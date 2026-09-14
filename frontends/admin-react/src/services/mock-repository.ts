@@ -209,6 +209,53 @@ export class MockRepository {
     this.state = this.loadState();
   }
 
+  async adoptSession(session: AuthSession): Promise<void> {
+    await this.mutate((state) => {
+      const accountIndex = state.accounts.findIndex((item) => item.id === session.account.id);
+      if (accountIndex >= 0) state.accounts[accountIndex] = session.account;
+      else state.accounts.push(session.account);
+
+      const user = { ...session.user, status: "ACTIVE" as const };
+      const userIndex = state.users.findIndex((item) => item.id === user.id);
+      if (userIndex >= 0) state.users[userIndex] = user;
+      else state.users.push(user);
+
+      const tenantIndex = state.tenants.findIndex((item) => item.id === session.tenant.id);
+      const tenant = { ...session.tenant } as Tenant;
+      if (tenantIndex >= 0) state.tenants[tenantIndex] = tenant;
+      else state.tenants.push(tenant);
+
+      const roleId = `http-role-${session.account.id}-${session.membership.role}`;
+      const role = {
+        id: roleId,
+        accountId: session.account.id,
+        code: session.membership.role,
+        name: session.membership.role,
+        description: "Rol provisto por la API NestJS",
+        isSystem: true,
+        permissions: session.membership.permissions,
+      };
+      const roleIndex = state.roles.findIndex((item) => item.id === roleId);
+      if (roleIndex >= 0) state.roles[roleIndex] = role;
+      else state.roles.push(role);
+
+      const membership = {
+        id: session.membership.id,
+        accountId: session.account.id,
+        userId: session.user.id,
+        roleId,
+        status: session.membership.status,
+        joinedAt: new Date().toISOString(),
+      };
+      const membershipIndex = state.accountMembers.findIndex(
+        (item) => item.accountId === session.account.id && item.userId === session.user.id,
+      );
+      if (membershipIndex >= 0) state.accountMembers[membershipIndex] = membership;
+      else state.accountMembers.push(membership);
+      state.sessionUserId = session.user.id;
+    });
+  }
+
   async login(input: LoginInput): Promise<AuthSession> {
     return this.mutate((state) => {
       const email = input.email.trim().toLocaleLowerCase();

@@ -1,5 +1,6 @@
 import type {
   AuthSession,
+  Account,
   Category,
   Customer,
   CustomerAddress,
@@ -48,6 +49,36 @@ export interface PageInput {
 export interface LoginInput {
   email: string;
   password: string;
+}
+
+export interface AccountWithTenants extends Account {
+  tenants: Array<{
+    id: string;
+    accountId: string;
+    name: string;
+    slug: string;
+    status: string;
+    defaultCurrency: string;
+    timeZone: string;
+    enabled: boolean;
+  }>;
+}
+
+export interface AccountFilters extends PageInput {
+  search?: string;
+}
+
+export interface CreateAccountInput {
+  accountName: string;
+  tenantName: string;
+  slug: string;
+  defaultCurrency?: string;
+  timeZone?: string;
+  owner?: {
+    email: string;
+    password: string;
+    displayName: string;
+  };
 }
 
 export interface ProductFilters extends PageInput {
@@ -304,6 +335,11 @@ export interface AuthService {
   logout(): Promise<void>;
 }
 
+export interface AccountService {
+  list(filters?: AccountFilters): Promise<PaginatedResult<AccountWithTenants>>;
+  create(input: CreateAccountInput): Promise<AccountWithTenants>;
+}
+
 export interface DashboardService {
   get(): Promise<DashboardSummary>;
 }
@@ -370,6 +406,7 @@ export interface DemoService {
 
 export interface Services {
   auth: AuthService;
+  accounts: AccountService;
   dashboard: DashboardService;
   products: ProductService;
   categories: CategoryService;

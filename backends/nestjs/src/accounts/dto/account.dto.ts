@@ -1,7 +1,30 @@
-import { IsOptional, IsString, Matches, MaxLength } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsEmail,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+  ValidateNested,
+} from 'class-validator';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 
 export class AccountQueryDto extends PaginationDto {}
+
+export class CreateAccountOwnerDto {
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  @MinLength(12)
+  @MaxLength(128)
+  password: string;
+
+  @IsString()
+  @MaxLength(150)
+  displayName: string;
+}
 
 export class CreateAccountDto {
   @IsString()
@@ -28,4 +51,9 @@ export class CreateAccountDto {
   @IsString()
   @MaxLength(80)
   timeZone = 'America/Argentina/Buenos_Aires';
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CreateAccountOwnerDto)
+  owner?: CreateAccountOwnerDto;
 }

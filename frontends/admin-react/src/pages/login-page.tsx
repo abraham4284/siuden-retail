@@ -25,7 +25,7 @@ export function LoginPage() {
   const location = useLocation();
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "admin@rubi.local", password: "demo123" },
+    defaultValues: { email: "admin@rubi.local", password: "" },
   });
 
   if (session.data) return <Navigate to="/dashboard" replace />;
@@ -57,7 +57,7 @@ export function LoginPage() {
         </div>
         <div className="flex items-center gap-2 text-sm text-slate-400">
           <ShieldCheck className="size-4 text-emerald-400" aria-hidden="true" />
-          Sesión de demostración protegida y aislada por comercio
+          Sesión protegida y aislada por comercio
         </div>
       </section>
 
@@ -129,10 +129,9 @@ export function LoginPage() {
                 </Button>
               </form>
 
-              <div className="mt-6 rounded-lg border border-dashed bg-muted/40 p-3 text-sm">
-                <p className="font-medium text-foreground">Credenciales de demostración</p>
-                <p className="mt-1 text-muted-foreground">admin@rubi.local · demo123</p>
-              </div>
+              <p className="mt-6 text-center text-xs text-muted-foreground">
+                La sesión se conecta de forma segura con la API de Siuden Retail.
+              </p>
             </CardContent>
           </Card>
         </div>

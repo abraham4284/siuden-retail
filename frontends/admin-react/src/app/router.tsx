@@ -6,6 +6,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 
 const LoginPage = lazy(() => import("@/pages/login-page").then((module) => ({ default: module.LoginPage })));
+const AccountsPage = lazy(() => import("@/pages/accounts-page").then((module) => ({ default: module.AccountsPage })));
 const DashboardPage = lazy(() => import("@/pages/dashboard-page").then((module) => ({ default: module.DashboardPage })));
 const CategoriesPage = lazy(() => import("@/pages/categories-page").then((module) => ({ default: module.CategoriesPage })));
 const CustomersPage = lazy(() => import("@/pages/customers-pages").then((module) => ({ default: module.CustomersPage })));
@@ -44,6 +45,9 @@ export function AppRouter() {
         <Route element={<AppShell />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
+          <Route element={<CapabilityRoute permission="accounts.manage" />}>
+            <Route path="accounts" element={<AccountsPage />} />
+          </Route>
 
           <Route element={<CapabilityRoute feature="CATALOG" permission="products.read" />}>
             <Route path="products" element={<ProductsPage />} />

@@ -84,7 +84,44 @@ export class AuthService {
     });
     return {
       accessToken: await this.jwt.signAsync(payload),
-      user: payload,
+      session: await this.session(payload),
+    };
+  }
+
+  async session(user: AuthenticatedUser) {
+    const [account, tenant, membership, role] = await Promise.all([
+      this.prisma.account.findUnique({ where: { id: user.accountId } }),
+      this.prisma.tenant.findFirst({
+        where: { id: user.tenantId, accountId: user.accountId },
+      }),
+      this.prisma.accountMember.findUnique({
+        where: {
+          accountId_userId: {
+            accountId: user.accountId,
+            userId: user.userId,
+          },
+        },
+      }),
+      this.prisma.role.findFirst({
+        where: { id: user.roleId, accountId: user.accountId },
+      }),
+    ]);
+    if (!account || !tenant || !membership || !role) {
+      throw new UnauthorizedException('La sesión ya no está disponible');
+    }
+    return {
+      user: {
+        id: user.userId,
+        email: user.email,
+        displayName: user.displayName,
+      },
+      account,
+      membership: {
+        id: membership.id,
+        role: role.code,
+        status: membership.status,
+        permissions: user.permissions,
+      },
       tenant,
     };
   }

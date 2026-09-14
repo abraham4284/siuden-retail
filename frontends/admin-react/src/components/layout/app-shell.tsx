@@ -1,6 +1,7 @@
 import { useMemo, useState, type ComponentType, type CSSProperties } from "react";
 import {
   ArchiveRestore,
+  Building2,
   Boxes,
   ChevronRight,
   ContactRound,
@@ -44,6 +45,10 @@ type NavigationItem = {
 
 const navigation: Array<{ label: string; items: NavigationItem[] }> = [
   {
+    label: "Plataforma",
+    items: [{ label: "Cuentas", to: "/accounts", icon: Building2, permission: "accounts.manage" }],
+  },
+  {
     label: "Inicio",
     items: [{ label: "Dashboard", to: "/dashboard", icon: LayoutDashboard }],
   },
@@ -81,6 +86,7 @@ const navigation: Array<{ label: string; items: NavigationItem[] }> = [
 
 const breadcrumbNames: Record<string, string> = {
   dashboard: "Dashboard",
+  accounts: "Cuentas",
   products: "Productos",
   new: "Nuevo",
   edit: "Editar",

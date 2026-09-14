@@ -2,7 +2,9 @@
 
 Página pública multi-tenant construida con Next.js, TypeScript y Tailwind CSS. `/` y `/rubi/` renderizan la tienda de Rubí con un read model local alineado con el dominio del administrador. Las categorías tienen rutas estáticas jerárquicas —por ejemplo, `/oro-18kt/pulseras/` y `/rubi/oro-18kt/pulseras/`— con catálogo, orden y paginación en el cliente.
 
-El encabezado incluye modales locales de creación de cuenta e inicio de sesión, accesibles también mediante `#register-modal` y `#login-modal`. Los formularios no persisten credenciales hasta que exista un servicio de autenticación de clientes en el backend.
+El encabezado incluye creación de cuenta e inicio de sesión de clientes, accesibles también mediante `#register-modal` y `#login-modal`. Ambos formularios consumen `/api/v1/storefront/auth`, restauran la sesión mediante cookie `HttpOnly` y vinculan el usuario con `customers.user_id` dentro del tenant actual. Estas identidades no reciben roles administrativos.
+
+Configurar `NEXT_PUBLIC_API_BASE_URL` usando `.env.example`; en desarrollo apunta a `http://localhost:3001/api/v1`.
 
 ## Desarrollo
 

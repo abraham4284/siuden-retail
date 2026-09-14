@@ -13,6 +13,8 @@ import { InventoryModule } from './inventory/inventory.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { PurchasesModule } from './purchases/purchases.module';
 import { SalesModule } from './sales/sales.module';
+import { StorefrontAuthModule } from './storefront-auth/storefront-auth.module';
+import { UsersModule } from './users/users.module';
 
 function validateEnvironment(
   config: Record<string, unknown>,
@@ -43,6 +45,8 @@ function validateEnvironment(
     InventoryModule,
     SalesModule,
     PurchasesModule,
+    UsersModule,
+    StorefrontAuthModule,
   ],
   controllers: [HealthController],
   providers: [

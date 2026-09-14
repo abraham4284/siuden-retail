@@ -9,8 +9,10 @@ import { queryKeys } from "@/lib/query-keys";
 import { services } from "@/services";
 import type {
   BulkPriceAdjustmentInput,
+  AccountFilters,
   CategoryOrderInput,
   CreateCategoryInput,
+  CreateAccountInput,
   CreateCustomerInput,
   CreateProductInput,
   CustomerFilters,
@@ -68,6 +70,24 @@ export function useLogoutMutation() {
       usePosStore.getState().clear();
       queryClient.clear();
       queryClient.setQueryData(queryKeys.session, null);
+    },
+  });
+}
+
+export function useAccountsQuery(filters: AccountFilters = {}) {
+  return useQuery({
+    queryKey: queryKeys.accounts(filters),
+    queryFn: () => services.accounts.list(filters),
+  });
+}
+
+export function useCreateAccountMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateAccountInput) => services.accounts.create(input),
+    onSuccess: async (account) => {
+      await queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      toast.success(`Cuenta ${account.name} creada correctamente.`);
     },
   });
 }

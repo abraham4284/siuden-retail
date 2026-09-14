@@ -1,6 +1,11 @@
 "use client";
 
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
+import {
+  loginStorefrontCustomer,
+  registerStorefrontCustomer,
+  type StorefrontSession,
+} from "@/lib/storefront-auth";
 import { CloseIcon } from "./icons";
 
 export type AuthView = "register" | "login";
@@ -8,6 +13,8 @@ export type AuthView = "register" | "login";
 type AuthModalProps = {
   onClose: () => void;
   onViewChange: (view: AuthView) => void;
+  onAuthenticated: (session: StorefrontSession) => void;
+  tenantSlug: string;
   view: AuthView;
 };
 
@@ -37,13 +44,14 @@ function AuthField({ autoComplete, className = "", id, label, name, required = f
   );
 }
 
-export function AuthModal({ onClose, onViewChange, view }: AuthModalProps) {
+export function AuthModal({ onAuthenticated, onClose, onViewChange, tenantSlug, view }: AuthModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const firstInputRef = useRef<HTMLInputElement | null>(null);
   const onCloseRef = useRef(onClose);
   const titleId = useId();
   const statusId = useId();
   const [message, setMessage] = useState("");
+  const [isPending, setIsPending] = useState(false);
   onCloseRef.current = onClose;
 
   useEffect(() => {
@@ -102,20 +110,49 @@ export function AuthModal({ onClose, onViewChange, view }: AuthModalProps) {
     });
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
+    const value = (name: string) => String(data.get(name) ?? "").trim();
 
     if (view === "register" && data.get("password") !== data.get("passwordConfirmation")) {
       setMessage("Las contraseñas no coinciden.");
       return;
     }
+    if (value("password").length < 8) {
+      setMessage("La contraseña debe tener al menos 8 caracteres.");
+      return;
+    }
 
-    setMessage(
-      view === "register"
-        ? "El formulario está listo. Falta conectar el servicio de creación de cuentas."
-        : "El formulario está listo. Falta conectar el servicio de inicio de sesión.",
-    );
+    setIsPending(true);
+    setMessage("");
+    try {
+      const session =
+        view === "register"
+          ? await registerStorefrontCustomer({
+              tenantSlug,
+              firstName: value("firstName"),
+              lastName: value("lastName"),
+              email: value("email"),
+              phone: value("phone") || undefined,
+              password: value("password"),
+            })
+          : await loginStorefrontCustomer({
+              tenantSlug,
+              email: value("email"),
+              password: value("password"),
+            });
+      onAuthenticated(session);
+      onClose();
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "No pudimos completar la operación. Intentá nuevamente.",
+      );
+    } finally {
+      setIsPending(false);
+    }
   };
 
   return (
@@ -187,8 +224,8 @@ export function AuthModal({ onClose, onViewChange, view }: AuthModalProps) {
                 Ya tengo cuenta
               </button>
             ) : <span />}
-            <button className="primary-button min-w-52 uppercase" type="submit">
-              {view === "register" ? "Crear cuenta" : "Ingresar"}
+            <button className="primary-button min-w-52 uppercase disabled:cursor-wait disabled:opacity-60" disabled={isPending} type="submit">
+              {isPending ? "Procesando…" : view === "register" ? "Crear cuenta" : "Ingresar"}
             </button>
           </footer>
         </form>

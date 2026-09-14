@@ -1,5 +1,6 @@
 export const queryKeys = {
   session: ["session"] as const,
+  accounts: (filters: unknown = {}) => ["accounts", filters] as const,
   dashboard: (tenantId: string) => ["dashboard", tenantId] as const,
   products: (tenantId: string, filters: unknown = {}) =>
     ["products", tenantId, filters] as const,

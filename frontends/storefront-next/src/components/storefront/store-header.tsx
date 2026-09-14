@@ -5,6 +5,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getCategoryHref, getCategoryTree, type CategoryNode } from "@/lib/categories";
 import { getContactUrl } from "@/lib/contact";
 import { formatPrice } from "@/lib/currency";
+import {
+  getStorefrontSession,
+  logoutStorefrontCustomer,
+  type StorefrontSession,
+} from "@/lib/storefront-auth";
 import type { StoreCategory, StoreProduct } from "@/types/storefront";
 import type { TenantConfig } from "@/types/tenant";
 import {
@@ -54,6 +59,7 @@ export function StoreHeader({ allCategories, basePath = "", products, tenant }: 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [authView, setAuthView] = useState<AuthView | null>(null);
+  const [customerSession, setCustomerSession] = useState<StorefrontSession | null>(null);
   const [query, setQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchTriggerRef = useRef<HTMLButtonElement>(null);
@@ -95,6 +101,19 @@ export function StoreHeader({ allCategories, basePath = "", products, tenant }: 
     window.addEventListener("hashchange", syncAuthViewWithHash);
     return () => window.removeEventListener("hashchange", syncAuthViewWithHash);
   }, []);
+
+  useEffect(() => {
+    if (!tenant.storefront.account?.enabled) return;
+    let active = true;
+    void getStorefrontSession().then((session) => {
+      if (active && (!session || session.tenant.slug === tenant.slug)) {
+        setCustomerSession(session);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [tenant.slug, tenant.storefront.account?.enabled]);
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -143,13 +162,32 @@ export function StoreHeader({ allCategories, basePath = "", products, tenant }: 
         {tenant.storefront.account?.enabled ? (
           <div className="border-b border-[var(--store-hairline)] bg-[var(--store-surface)]/80">
             <div className="store-container flex min-h-9 items-center justify-end gap-2 text-xs text-[var(--store-muted)] sm:justify-start sm:text-sm">
-              <button className="transition-colors hover:text-[var(--store-primary)] hover:underline" onClick={() => openAuth("register")} type="button">
-                Crear cuenta
-              </button>
-              <span aria-hidden="true">|</span>
-              <button className="transition-colors hover:text-[var(--store-primary)] hover:underline" onClick={() => openAuth("login")} type="button">
-                Iniciar sesión
-              </button>
+              {customerSession ? (
+                <>
+                  <span>Hola, {customerSession.customer.firstName ?? customerSession.user.displayName}</span>
+                  <span aria-hidden="true">|</span>
+                  <button
+                    className="transition-colors hover:text-[var(--store-primary)] hover:underline"
+                    onClick={async () => {
+                      await logoutStorefrontCustomer();
+                      setCustomerSession(null);
+                    }}
+                    type="button"
+                  >
+                    Cerrar sesión
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button className="transition-colors hover:text-[var(--store-primary)] hover:underline" onClick={() => openAuth("register")} type="button">
+                    Crear cuenta
+                  </button>
+                  <span aria-hidden="true">|</span>
+                  <button className="transition-colors hover:text-[var(--store-primary)] hover:underline" onClick={() => openAuth("login")} type="button">
+                    Iniciar sesión
+                  </button>
+                </>
+              )}
             </div>
           </div>
         ) : null}
@@ -295,7 +333,15 @@ export function StoreHeader({ allCategories, basePath = "", products, tenant }: 
         onClose={() => setIsMenuOpen(false)}
         tenant={tenant}
       />
-      {authView ? <AuthModal onClose={closeAuth} onViewChange={openAuth} view={authView} /> : null}
+      {authView ? (
+        <AuthModal
+          onAuthenticated={setCustomerSession}
+          onClose={closeAuth}
+          onViewChange={openAuth}
+          tenantSlug={tenant.slug}
+          view={authView}
+        />
+      ) : null}
     </>
   );
 }

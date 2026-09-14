@@ -1,14 +1,19 @@
 import type { Services } from "@/services/contracts";
+import { createHttpServices } from "@/services/http-services";
 import { MockRepository } from "@/services/mock-repository";
 
-export function createMockServices(delayMs = 90): Services {
-  const repository = new MockRepository(delayMs);
-
+export function createMockServices(delayMs = 90, repository = new MockRepository(delayMs)): Services {
   return {
     auth: {
       login: (input) => repository.login(input),
       me: () => repository.me(),
       logout: () => repository.logout(),
+    },
+    accounts: {
+      list: async () => ({ items: [], total: 0, page: 1, pageSize: 20, totalPages: 0 }),
+      create: async () => {
+        throw new Error("La creación de cuentas requiere la API NestJS.");
+      },
     },
     dashboard: {
       get: () => repository.getDashboard(),
@@ -69,7 +74,11 @@ export function createMockServices(delayMs = 90): Services {
   };
 }
 
-export const services = createMockServices();
+const repository = new MockRepository(90);
+const mockServices = createMockServices(90, repository);
+export const services = import.meta.env.VITE_USE_MOCKS === "true"
+  ? mockServices
+  : createHttpServices(mockServices, repository);
 
 export { MockRepository, MockServiceError } from "@/services/mock-repository";
 export { DEMO_CREDENTIALS, MOCK_DATA_VERSION, MOCK_STORAGE_KEY } from "@/mocks/seed";

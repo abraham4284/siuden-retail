@@ -94,8 +94,12 @@ async function main(): Promise<void> {
     permissions.set(code, permission.id);
   }
   const rolePermissionCodes: Record<string, string[]> = {
-    [IDS.ownerRole]: permissionDefinitions.map(([code]) => code),
-    [IDS.adminRole]: permissionDefinitions.map(([code]) => code),
+    [IDS.ownerRole]: permissionDefinitions
+      .map(([code]) => code)
+      .filter((code) => code !== 'accounts.manage'),
+    [IDS.adminRole]: permissionDefinitions
+      .map(([code]) => code)
+      .filter((code) => code !== 'accounts.manage'),
     [IDS.sellerRole]: [
       'products.read',
       'inventory.read',
@@ -115,6 +119,15 @@ async function main(): Promise<void> {
       'purchases.write',
     ],
   };
+  const accountsManagePermissionId = permissions.get('accounts.manage');
+  if (accountsManagePermissionId) {
+    await prisma.rolePermission.deleteMany({
+      where: {
+        roleId: { in: [IDS.ownerRole, IDS.adminRole] },
+        permissionId: accountsManagePermissionId,
+      },
+    });
+  }
   for (const [roleId, codes] of Object.entries(rolePermissionCodes)) {
     for (const code of codes) {
       await prisma.rolePermission.upsert({

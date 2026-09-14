@@ -14,8 +14,11 @@ async function bootstrap(): Promise<void> {
   app.setGlobalPrefix('api/v1');
   app.use(helmet());
   app.enableCors({
-    origin: config
-      .getOrThrow<string>('ADMIN_FRONTEND_URL')
+    origin: [
+      config.getOrThrow<string>('ADMIN_FRONTEND_URL'),
+      config.get<string>('STOREFRONT_FRONTEND_URL', 'http://localhost:3000'),
+    ]
+      .join(',')
       .split(',')
       .map((origin) => origin.trim()),
     credentials: true,
