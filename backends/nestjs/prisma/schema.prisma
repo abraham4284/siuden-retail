@@ -1,0 +1,630 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum AccountStatus {
+  TRIAL
+  ACTIVE
+  SUSPENDED
+  CANCELLED
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  BLOCKED
+  DISABLED
+}
+
+enum MemberStatus {
+  INVITED
+  ACTIVE
+  BLOCKED
+}
+
+enum TenantStatus {
+  DRAFT
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum MediaStatus {
+  ACTIVE
+  DELETED
+}
+
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum SellingMode {
+  DIRECT
+  INQUIRY_ONLY
+}
+
+enum CustomerSource {
+  STOREFRONT
+  POS
+  ADMIN
+  IMPORT
+}
+
+enum CustomerKind {
+  INDIVIDUAL
+  BUSINESS
+}
+
+enum CustomerStatus {
+  ACTIVE
+  BLOCKED
+  ARCHIVED
+}
+
+enum SaleChannel {
+  POS
+  MANUAL
+  ONLINE
+}
+
+enum SaleStatus {
+  DRAFT
+  CONFIRMED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PENDING
+  PARTIAL
+  PAID
+  REFUNDED
+}
+
+enum PurchaseDocumentType {
+  INVOICE
+  DELIVERY_NOTE
+  NO_DOCUMENT
+}
+
+enum PurchaseStatus {
+  DRAFT
+  ORDERED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
+enum PurchasePaymentStatus {
+  UNPAID
+  PARTIAL
+  PAID
+  REFUNDED
+}
+
+enum DocumentType {
+  SALE
+  ORDER
+  PURCHASE
+  STOCK_MOVEMENT
+}
+
+enum MovementType {
+  INITIAL
+  MANUAL_IN
+  MANUAL_OUT
+  ADJUSTMENT
+  SALE
+  SALE_REVERSAL
+  PURCHASE
+  PURCHASE_RETURN
+  CUSTOMER_RETURN
+}
+
+enum MovementStatus {
+  POSTED
+  REVERSED
+}
+
+model Account {
+  id        String        @id @db.Char(36)
+  name      String        @db.VarChar(150)
+  status    AccountStatus @default(TRIAL)
+  createdAt DateTime      @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt DateTime      @updatedAt @map("updated_at") @db.DateTime(6)
+
+  @@index([status], map: "idx_accounts_status")
+  @@map("accounts")
+}
+
+model User {
+  id              String     @id @db.Char(36)
+  email           String     @unique(map: "uq_users_email") @db.VarChar(254)
+  passwordHash    String     @map("password_hash") @db.VarChar(255)
+  displayName     String     @map("display_name") @db.VarChar(150)
+  status          UserStatus @default(PENDING)
+  emailVerifiedAt DateTime?  @map("email_verified_at") @db.DateTime(6)
+  lastLoginAt     DateTime?  @map("last_login_at") @db.DateTime(6)
+  createdAt       DateTime   @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt       DateTime   @updatedAt @map("updated_at") @db.DateTime(6)
+
+  @@index([status], map: "idx_users_status")
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @db.Char(36)
+  accountId   String   @map("account_id") @db.Char(36)
+  code        String   @db.VarChar(60)
+  name        String   @db.VarChar(100)
+  description String?  @db.VarChar(255)
+  isSystem    Boolean  @default(false) @map("is_system")
+  createdAt   DateTime @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.DateTime(6)
+
+  @@unique([accountId, code], map: "uq_roles_account_code")
+  @@unique([accountId, id], map: "uq_roles_account_id")
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @db.Char(36)
+  code        String   @unique(map: "uq_permissions_code") @db.VarChar(100)
+  description String?  @db.VarChar(255)
+  createdAt   DateTime @default(now()) @map("created_at") @db.DateTime(6)
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String   @map("role_id") @db.Char(36)
+  permissionId String   @map("permission_id") @db.Char(36)
+  createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(6)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId], map: "idx_role_permissions_permission")
+  @@map("role_permissions")
+}
+
+model AccountMember {
+  id        String       @id @db.Char(36)
+  accountId String       @map("account_id") @db.Char(36)
+  userId    String       @map("user_id") @db.Char(36)
+  roleId    String       @map("role_id") @db.Char(36)
+  status    MemberStatus @default(INVITED)
+  joinedAt  DateTime?    @map("joined_at") @db.DateTime(6)
+  createdAt DateTime     @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt DateTime     @updatedAt @map("updated_at") @db.DateTime(6)
+
+  @@unique([accountId, userId], map: "uq_account_members_account_user")
+  @@index([userId], map: "idx_account_members_user")
+  @@index([accountId, roleId], map: "idx_account_members_account_role")
+  @@map("account_members")
+}
+
+model Tenant {
+  id              String       @id @db.Char(36)
+  accountId       String       @map("account_id") @db.Char(36)
+  name            String       @db.VarChar(150)
+  slug            String       @unique(map: "uq_tenants_slug") @db.VarChar(100)
+  status          TenantStatus @default(DRAFT)
+  defaultCurrency String       @default("ARS") @map("default_currency") @db.Char(3)
+  timeZone        String       @default("America/Argentina/Buenos_Aires") @map("time_zone") @db.VarChar(80)
+  enabled         Boolean      @default(true)
+  createdAt       DateTime     @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt       DateTime     @updatedAt @map("updated_at") @db.DateTime(6)
+
+  @@unique([accountId, id], map: "uq_tenants_account_id")
+  @@index([accountId, status], map: "idx_tenants_account_status")
+  @@map("tenants")
+}
+
+model StorefrontSetting {
+  id                 String   @id @db.Char(36)
+  tenantId           String   @unique(map: "uq_storefront_settings_tenant") @map("tenant_id") @db.Char(36)
+  isPublished        Boolean  @default(false) @map("is_published")
+  contactFormEnabled Boolean  @default(false) @map("contact_form_enabled")
+  showPrices         Boolean  @default(true) @map("show_prices")
+  allowNegativeStock Boolean  @default(false) @map("allow_negative_stock")
+  defaultCatalogSort String   @default("FEATURED") @map("default_catalog_sort") @db.VarChar(20)
+  catalogColumns     Int      @default(4) @map("catalog_columns_desktop") @db.UnsignedTinyInt
+  createdAt          DateTime @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.DateTime(6)
+
+  @@map("storefront_settings")
+}
+
+model MediaAsset {
+  id             String      @id @db.Char(36)
+  tenantId       String      @map("tenant_id") @db.Char(36)
+  storageKey     String      @map("storage_key") @db.VarChar(500)
+  originalName   String      @map("original_name") @db.VarChar(255)
+  mimeType       String      @map("mime_type") @db.VarChar(120)
+  sizeBytes      BigInt      @map("size_bytes") @db.UnsignedBigInt
+  width          Int?        @db.UnsignedInt
+  height         Int?        @db.UnsignedInt
+  altText        String?     @map("alt_text") @db.VarChar(255)
+  checksumSha256 String?     @map("checksum_sha256") @db.Char(64)
+  status         MediaStatus @default(ACTIVE)
+  createdAt      DateTime    @default(now()) @map("created_at") @db.DateTime(6)
+  deletedAt      DateTime?   @map("deleted_at") @db.DateTime(6)
+
+  @@unique([tenantId, storageKey], map: "uq_media_assets_tenant_storage_key")
+  @@unique([tenantId, id], map: "uq_media_assets_tenant_id")
+  @@map("media_assets")
+}
+
+model Category {
+  id          String    @id @db.Char(36)
+  tenantId    String    @map("tenant_id") @db.Char(36)
+  parentId    String?   @map("parent_id") @db.Char(36)
+  name        String    @db.VarChar(150)
+  slug        String    @db.VarChar(180)
+  description String?   @db.Text
+  sortOrder   Int       @default(0) @map("sort_order") @db.UnsignedInt
+  isVisible   Boolean   @default(true) @map("is_visible")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.DateTime(6)
+  deletedAt   DateTime? @map("deleted_at") @db.DateTime(6)
+
+  @@unique([tenantId, slug], map: "uq_categories_tenant_slug")
+  @@unique([tenantId, id], map: "uq_categories_tenant_id")
+  @@index([tenantId, parentId, sortOrder], map: "idx_categories_parent")
+  @@map("categories")
+}
+
+model Product {
+  id             String        @id @db.Char(36)
+  tenantId       String        @map("tenant_id") @db.Char(36)
+  name           String        @db.VarChar(200)
+  slug           String        @db.VarChar(220)
+  description    String?       @db.LongText
+  status         ProductStatus @default(DRAFT)
+  sellingMode    SellingMode   @default(DIRECT) @map("selling_mode")
+  seoTitle       String?       @map("seo_title") @db.VarChar(255)
+  seoDescription String?       @map("seo_description") @db.VarChar(500)
+  publishedAt    DateTime?     @map("published_at") @db.DateTime(6)
+  createdAt      DateTime      @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt      DateTime      @updatedAt @map("updated_at") @db.DateTime(6)
+  deletedAt      DateTime?     @map("deleted_at") @db.DateTime(6)
+
+  @@unique([tenantId, slug], map: "uq_products_tenant_slug")
+  @@unique([tenantId, id], map: "uq_products_tenant_id")
+  @@index([tenantId, status, publishedAt], map: "idx_products_tenant_status")
+  @@index([tenantId, name], map: "idx_products_tenant_name")
+  @@map("products")
+}
+
+model ProductCategory {
+  tenantId   String   @map("tenant_id") @db.Char(36)
+  productId  String   @map("product_id") @db.Char(36)
+  categoryId String   @map("category_id") @db.Char(36)
+  isPrimary  Boolean  @default(false) @map("is_primary")
+  sortOrder  Int      @default(0) @map("sort_order") @db.UnsignedInt
+  createdAt  DateTime @default(now()) @map("created_at") @db.DateTime(6)
+
+  @@id([productId, categoryId])
+  @@index([tenantId, categoryId, sortOrder], map: "idx_product_categories_tenant_category")
+  @@index([tenantId, productId], map: "idx_product_categories_tenant_product")
+  @@map("product_categories")
+}
+
+model ProductVariant {
+  id             String    @id @db.Char(36)
+  tenantId       String    @map("tenant_id") @db.Char(36)
+  productId      String    @map("product_id") @db.Char(36)
+  name           String    @default("Default") @db.VarChar(180)
+  sku            String?   @db.VarChar(100)
+  barcode        String?   @db.VarChar(100)
+  price          Decimal?  @db.Decimal(14, 2)
+  compareAtPrice Decimal?  @map("compare_at_price") @db.Decimal(14, 2)
+  cost           Decimal?  @db.Decimal(14, 2)
+  weightKg       Decimal?  @map("weight_kg") @db.Decimal(12, 3)
+  heightCm       Decimal?  @map("height_cm") @db.Decimal(12, 2)
+  widthCm        Decimal?  @map("width_cm") @db.Decimal(12, 2)
+  depthCm        Decimal?  @map("depth_cm") @db.Decimal(12, 2)
+  trackInventory Boolean   @default(true) @map("track_inventory")
+  allowBackorder Boolean   @default(false) @map("allow_backorder")
+  isDefault      Boolean   @default(false) @map("is_default")
+  enabled        Boolean   @default(true)
+  sortOrder      Int       @default(0) @map("sort_order") @db.UnsignedInt
+  createdAt      DateTime  @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.DateTime(6)
+  deletedAt      DateTime? @map("deleted_at") @db.DateTime(6)
+
+  @@unique([tenantId, sku], map: "uq_product_variants_tenant_sku")
+  @@unique([tenantId, barcode], map: "uq_product_variants_tenant_barcode")
+  @@unique([tenantId, id], map: "uq_product_variants_tenant_id")
+  @@index([tenantId, productId, enabled], map: "idx_product_variants_product")
+  @@map("product_variants")
+}
+
+model ProductImage {
+  id               String   @id @db.Char(36)
+  tenantId         String   @map("tenant_id") @db.Char(36)
+  productId        String   @map("product_id") @db.Char(36)
+  productVariantId String?  @map("product_variant_id") @db.Char(36)
+  mediaAssetId     String   @map("media_asset_id") @db.Char(36)
+  sortOrder        Int      @default(0) @map("sort_order") @db.UnsignedInt
+  isPrimary        Boolean  @default(false) @map("is_primary")
+  createdAt        DateTime @default(now()) @map("created_at") @db.DateTime(6)
+
+  @@unique([tenantId, id], map: "uq_product_images_tenant_id")
+  @@index([tenantId, productId, sortOrder], map: "idx_product_images_product")
+  @@index([tenantId, productVariantId], map: "idx_product_images_variant")
+  @@index([tenantId, mediaAssetId], map: "idx_product_images_asset")
+  @@map("product_images")
+}
+
+model StockLocation {
+  id            String   @id @db.Char(36)
+  tenantId      String   @map("tenant_id") @db.Char(36)
+  name          String   @db.VarChar(150)
+  code          String   @db.VarChar(60)
+  isDefault     Boolean  @default(false) @map("is_default")
+  enabled       Boolean  @default(true)
+  addressLine   String?  @map("address_line") @db.VarChar(200)
+  addressNumber String?  @map("address_number") @db.VarChar(30)
+  city          String?  @db.VarChar(100)
+  province      String?  @db.VarChar(100)
+  createdAt     DateTime @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.DateTime(6)
+
+  @@unique([tenantId, code], map: "uq_stock_locations_tenant_code")
+  @@unique([tenantId, id], map: "uq_stock_locations_tenant_id")
+  @@map("stock_locations")
+}
+
+model InventoryBalance {
+  id                String   @id @db.Char(36)
+  tenantId          String   @map("tenant_id") @db.Char(36)
+  stockLocationId   String   @map("stock_location_id") @db.Char(36)
+  productVariantId  String   @map("product_variant_id") @db.Char(36)
+  onHand            Decimal  @default(0) @map("on_hand") @db.Decimal(14, 3)
+  reserved          Decimal  @default(0) @db.Decimal(14, 3)
+  lowStockThreshold Decimal? @map("low_stock_threshold") @db.Decimal(14, 3)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.DateTime(6)
+
+  @@unique([tenantId, stockLocationId, productVariantId], map: "uq_inventory_balance_location_variant")
+  @@index([tenantId, productVariantId], map: "idx_inventory_balances_variant")
+  @@map("inventory_balances")
+}
+
+model DocumentSequence {
+  id           String       @id @db.Char(36)
+  tenantId     String       @map("tenant_id") @db.Char(36)
+  documentType DocumentType @map("document_type")
+  prefix       String       @db.VarChar(20)
+  nextValue    BigInt       @default(1) @map("next_value") @db.UnsignedBigInt
+  padding      Int          @default(6) @db.UnsignedTinyInt
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.DateTime(6)
+
+  @@unique([tenantId, documentType], map: "uq_document_sequences_tenant_type")
+  @@map("document_sequences")
+}
+
+model CustomerGroup {
+  id        String   @id @db.Char(36)
+  tenantId  String   @map("tenant_id") @db.Char(36)
+  code      String   @db.VarChar(60)
+  name      String   @db.VarChar(100)
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(6)
+
+  @@unique([tenantId, code], map: "uq_customer_groups_tenant_code")
+  @@unique([tenantId, id], map: "uq_customer_groups_tenant_id")
+  @@map("customer_groups")
+}
+
+model Customer {
+  id              String         @id @db.Char(36)
+  tenantId        String         @map("tenant_id") @db.Char(36)
+  userId          String?        @map("user_id") @db.Char(36)
+  customerGroupId String?        @map("customer_group_id") @db.Char(36)
+  source          CustomerSource @default(ADMIN)
+  kind            CustomerKind   @default(INDIVIDUAL)
+  firstName       String?        @map("first_name") @db.VarChar(100)
+  lastName        String?        @map("last_name") @db.VarChar(100)
+  businessName    String?        @map("business_name") @db.VarChar(200)
+  documentType    String?        @map("document_type") @db.VarChar(30)
+  documentNumber  String?        @map("document_number") @db.VarChar(40)
+  taxCondition    String?        @map("tax_condition") @db.VarChar(80)
+  email           String?        @db.VarChar(254)
+  phone           String?        @db.VarChar(40)
+  status          CustomerStatus @default(ACTIVE)
+  notes           String?        @db.Text
+  blockedAt       DateTime?      @map("blocked_at") @db.DateTime(6)
+  createdAt       DateTime       @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt       DateTime       @updatedAt @map("updated_at") @db.DateTime(6)
+  deletedAt       DateTime?      @map("deleted_at") @db.DateTime(6)
+
+  @@unique([tenantId, userId], map: "uq_customers_tenant_user")
+  @@unique([tenantId, documentType, documentNumber], map: "uq_customers_tenant_document")
+  @@unique([tenantId, id], map: "uq_customers_tenant_id")
+  @@index([tenantId, email], map: "idx_customers_tenant_email")
+  @@index([tenantId, phone], map: "idx_customers_tenant_phone")
+  @@map("customers")
+}
+
+model PaymentMethod {
+  id           String   @id @db.Char(36)
+  tenantId     String   @map("tenant_id") @db.Char(36)
+  code         String   @db.VarChar(60)
+  name         String   @db.VarChar(100)
+  methodType   String   @map("method_type") @db.VarChar(30)
+  availability String   @default("POS") @db.VarChar(20)
+  providerCode String?  @map("provider_code") @db.VarChar(80)
+  instructions String?  @db.Text
+  enabled      Boolean  @default(true)
+  sortOrder    Int      @default(0) @map("sort_order") @db.UnsignedInt
+  createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.DateTime(6)
+
+  @@unique([tenantId, code], map: "uq_payment_methods_tenant_code")
+  @@unique([tenantId, id], map: "uq_payment_methods_tenant_id")
+  @@map("payment_methods")
+}
+
+model Sale {
+  id                       String        @id @db.Char(36)
+  tenantId                 String        @map("tenant_id") @db.Char(36)
+  saleNumber               String        @map("sale_number") @db.VarChar(60)
+  customerId               String?       @map("customer_id") @db.Char(36)
+  sourceOrderId            String?       @map("source_order_id") @db.Char(36)
+  stockLocationId          String        @map("stock_location_id") @db.Char(36)
+  channel                  SaleChannel   @default(POS)
+  status                   SaleStatus    @default(DRAFT)
+  paymentStatus            PaymentStatus @default(UNPAID) @map("payment_status")
+  customerNameSnapshot     String?       @map("customer_name_snapshot") @db.VarChar(200)
+  customerDocumentSnapshot String?       @map("customer_document_snapshot") @db.VarChar(80)
+  subtotal                 Decimal       @default(0) @db.Decimal(14, 2)
+  discountTotal            Decimal       @default(0) @map("discount_total") @db.Decimal(14, 2)
+  total                    Decimal       @default(0) @db.Decimal(14, 2)
+  currency                 String        @default("ARS") @db.Char(3)
+  notes                    String?       @db.Text
+  soldAt                   DateTime?     @map("sold_at") @db.DateTime(6)
+  confirmedAt              DateTime?     @map("confirmed_at") @db.DateTime(6)
+  cancelledAt              DateTime?     @map("cancelled_at") @db.DateTime(6)
+  createdByUserId          String?       @map("created_by_user_id") @db.Char(36)
+  createdAt                DateTime      @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt                DateTime      @updatedAt @map("updated_at") @db.DateTime(6)
+
+  @@unique([tenantId, saleNumber], map: "uq_sales_tenant_number")
+  @@unique([tenantId, id], map: "uq_sales_tenant_id")
+  @@index([tenantId, status, soldAt], map: "idx_sales_status_date")
+  @@map("sales")
+}
+
+model SaleItem {
+  id                  String   @id @db.Char(36)
+  tenantId            String   @map("tenant_id") @db.Char(36)
+  saleId              String   @map("sale_id") @db.Char(36)
+  productVariantId    String?  @map("product_variant_id") @db.Char(36)
+  productNameSnapshot String   @map("product_name_snapshot") @db.VarChar(200)
+  variantNameSnapshot String?  @map("variant_name_snapshot") @db.VarChar(180)
+  skuSnapshot         String?  @map("sku_snapshot") @db.VarChar(100)
+  quantity            Decimal  @db.Decimal(14, 3)
+  unitPrice           Decimal  @map("unit_price") @db.Decimal(14, 2)
+  discountAmount      Decimal  @default(0) @map("discount_amount") @db.Decimal(14, 2)
+  lineTotal           Decimal  @map("line_total") @db.Decimal(14, 2)
+  createdAt           DateTime @default(now()) @map("created_at") @db.DateTime(6)
+
+  @@unique([tenantId, id], map: "uq_sale_items_tenant_id")
+  @@index([tenantId, saleId], map: "idx_sale_items_sale")
+  @@map("sale_items")
+}
+
+model Supplier {
+  id          String         @id @db.Char(36)
+  tenantId    String         @map("tenant_id") @db.Char(36)
+  name        String         @db.VarChar(200)
+  taxId       String?        @map("tax_id") @db.VarChar(40)
+  email       String?        @db.VarChar(254)
+  phone       String?        @db.VarChar(40)
+  addressLine String?        @map("address_line") @db.VarChar(200)
+  city        String?        @db.VarChar(100)
+  province    String?        @db.VarChar(100)
+  status      CustomerStatus @default(ACTIVE)
+  notes       String?        @db.Text
+  createdAt   DateTime       @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt   DateTime       @updatedAt @map("updated_at") @db.DateTime(6)
+  deletedAt   DateTime?      @map("deleted_at") @db.DateTime(6)
+
+  @@unique([tenantId, taxId], map: "uq_suppliers_tenant_tax_id")
+  @@unique([tenantId, id], map: "uq_suppliers_tenant_id")
+  @@index([tenantId, name], map: "idx_suppliers_tenant_name")
+  @@map("suppliers")
+}
+
+model Purchase {
+  id              String                @id @db.Char(36)
+  tenantId        String                @map("tenant_id") @db.Char(36)
+  purchaseNumber  String                @map("purchase_number") @db.VarChar(60)
+  supplierId      String?               @map("supplier_id") @db.Char(36)
+  stockLocationId String                @map("stock_location_id") @db.Char(36)
+  documentType    PurchaseDocumentType  @default(NO_DOCUMENT) @map("document_type")
+  documentNumber  String?               @map("document_number") @db.VarChar(80)
+  status          PurchaseStatus        @default(DRAFT)
+  paymentStatus   PurchasePaymentStatus @default(UNPAID) @map("payment_status")
+  subtotal        Decimal               @default(0) @db.Decimal(14, 2)
+  discountTotal   Decimal               @default(0) @map("discount_total") @db.Decimal(14, 2)
+  total           Decimal               @default(0) @db.Decimal(14, 2)
+  currency        String                @default("ARS") @db.Char(3)
+  notes           String?               @db.Text
+  purchasedAt     DateTime?             @map("purchased_at") @db.DateTime(6)
+  receivedAt      DateTime?             @map("received_at") @db.DateTime(6)
+  cancelledAt     DateTime?             @map("cancelled_at") @db.DateTime(6)
+  createdByUserId String?               @map("created_by_user_id") @db.Char(36)
+  createdAt       DateTime              @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt       DateTime              @updatedAt @map("updated_at") @db.DateTime(6)
+
+  @@unique([tenantId, purchaseNumber], map: "uq_purchases_tenant_number")
+  @@unique([tenantId, id], map: "uq_purchases_tenant_id")
+  @@index([tenantId, status, purchasedAt], map: "idx_purchases_status_date")
+  @@map("purchases")
+}
+
+model PurchaseItem {
+  id                  String   @id @db.Char(36)
+  tenantId            String   @map("tenant_id") @db.Char(36)
+  purchaseId          String   @map("purchase_id") @db.Char(36)
+  productVariantId    String   @map("product_variant_id") @db.Char(36)
+  descriptionSnapshot String   @map("description_snapshot") @db.VarChar(255)
+  orderedQuantity     Decimal  @map("ordered_quantity") @db.Decimal(14, 3)
+  receivedQuantity    Decimal  @default(0) @map("received_quantity") @db.Decimal(14, 3)
+  unitCost            Decimal  @map("unit_cost") @db.Decimal(14, 2)
+  discountAmount      Decimal  @default(0) @map("discount_amount") @db.Decimal(14, 2)
+  lineTotal           Decimal  @map("line_total") @db.Decimal(14, 2)
+  createdAt           DateTime @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.DateTime(6)
+
+  @@unique([tenantId, id], map: "uq_purchase_items_tenant_id")
+  @@index([tenantId, purchaseId], map: "idx_purchase_items_purchase")
+  @@map("purchase_items")
+}
+
+model StockMovement {
+  id              String         @id @db.Char(36)
+  tenantId        String         @map("tenant_id") @db.Char(36)
+  movementNumber  String         @map("movement_number") @db.VarChar(60)
+  stockLocationId String         @map("stock_location_id") @db.Char(36)
+  movementType    MovementType   @map("movement_type")
+  status          MovementStatus @default(POSTED)
+  saleId          String?        @map("sale_id") @db.Char(36)
+  orderId         String?        @map("order_id") @db.Char(36)
+  purchaseId      String?        @map("purchase_id") @db.Char(36)
+  reversalOfId    String?        @map("reversal_of_id") @db.Char(36)
+  reason          String?        @db.VarChar(255)
+  occurredAt      DateTime       @map("occurred_at") @db.DateTime(6)
+  createdByUserId String?        @map("created_by_user_id") @db.Char(36)
+  createdAt       DateTime       @default(now()) @map("created_at") @db.DateTime(6)
+
+  @@unique([tenantId, movementNumber], map: "uq_stock_movements_tenant_number")
+  @@unique([tenantId, id], map: "uq_stock_movements_tenant_id")
+  @@index([tenantId, stockLocationId, occurredAt], map: "idx_stock_movements_location_date")
+  @@index([tenantId, movementType, occurredAt], map: "idx_stock_movements_type_date")
+  @@map("stock_movements")
+}
+
+model StockMovementItem {
+  id               String   @id @db.Char(36)
+  tenantId         String   @map("tenant_id") @db.Char(36)
+  stockMovementId  String   @map("stock_movement_id") @db.Char(36)
+  productVariantId String   @map("product_variant_id") @db.Char(36)
+  quantityDelta    Decimal  @map("quantity_delta") @db.Decimal(14, 3)
+  unitCost         Decimal? @map("unit_cost") @db.Decimal(14, 2)
+  createdAt        DateTime @default(now()) @map("created_at") @db.DateTime(6)
+
+  @@index([tenantId, stockMovementId], map: "idx_stock_movement_items_movement")
+  @@index([tenantId, productVariantId], map: "idx_stock_movement_items_variant")
+  @@map("stock_movement_items")
+}
