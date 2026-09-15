@@ -18,6 +18,9 @@ import {
 import { PaginationDto } from '../../common/dto/pagination.dto';
 
 export class CreateVariantDto {
+  @IsOptional()
+  @IsUUID()
+  id?: string;
   @IsString()
   @MaxLength(180)
   name = 'Default';
@@ -67,9 +70,36 @@ export class CreateVariantDto {
   @IsInt()
   @Min(0)
   sortOrder?: number;
+
+  @IsOptional() @IsNumber() @Min(0) weightKg?: number;
+  @IsOptional() @IsNumber() @Min(0) heightCm?: number;
+  @IsOptional() @IsNumber() @Min(0) widthCm?: number;
+  @IsOptional() @IsNumber() @Min(0) depthCm?: number;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsUUID(undefined, { each: true })
+  selectedOptionValueIds?: string[];
 }
 
 export class UpdateVariantDto extends PartialType(CreateVariantDto) {}
+
+export class ProductOptionValueDto {
+  @IsOptional() @IsUUID() id?: string;
+  @IsString() @MaxLength(100) value: string;
+  @IsOptional() @IsInt() @Min(0) sortOrder?: number;
+}
+
+export class ProductOptionDto {
+  @IsOptional() @IsUUID() id?: string;
+  @IsString() @MaxLength(100) name: string;
+  @IsOptional() @IsInt() @Min(0) sortOrder?: number;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ProductOptionValueDto)
+  values: ProductOptionValueDto[];
+}
 
 export class CreateProductDto {
   @IsString()
@@ -114,6 +144,12 @@ export class CreateProductDto {
   @ValidateNested({ each: true })
   @Type(() => CreateVariantDto)
   variants?: CreateVariantDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ProductOptionDto)
+  options?: ProductOptionDto[];
 }
 
 export class UpdateProductDto extends PartialType(CreateProductDto) {}

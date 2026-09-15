@@ -21,6 +21,8 @@ export class CustomersService {
       tenantId,
       deletedAt: null,
       status: query.status,
+      kind: query.kind,
+      source: query.source,
       customerGroupId: query.customerGroupId,
       OR: query.search
         ? [
@@ -41,7 +43,7 @@ export class CustomersService {
       }),
       this.prisma.customer.count({ where }),
     ]);
-    return paginated(data, total, query);
+    return paginated(await this.views(tenantId, data), total, query);
   }
 
   async findOne(tenantId: string, id: string) {
@@ -49,35 +51,64 @@ export class CustomersService {
       where: { id, tenantId, deletedAt: null },
     });
     if (!customer) throw new NotFoundException('Cliente no encontrado');
-    return customer;
+    return (await this.views(tenantId, [customer]))[0];
   }
 
   async create(tenantId: string, dto: CreateCustomerDto) {
     this.assertName(dto);
     await this.assertGroup(tenantId, dto.customerGroupId);
-    return this.prisma.customer.create({
+    const { addresses, ...data } = dto;
+    const customer = await this.prisma.customer.create({
       data: {
         id: crypto.randomUUID(),
         tenantId,
-        ...dto,
+        ...data,
         email: dto.email?.trim().toLowerCase(),
       },
     });
+    if (addresses?.length)
+      await this.prisma.customerAddress.createMany({
+        data: addresses.map(({ id, ...address }) => ({
+          id: id ?? crypto.randomUUID(),
+          tenantId,
+          customerId: customer.id,
+          ...address,
+        })),
+      });
+    return this.findOne(tenantId, customer.id);
   }
 
   async update(tenantId: string, id: string, dto: UpdateCustomerDto) {
     const current = await this.findOne(tenantId, id);
     this.assertName({ ...current, ...dto });
     await this.assertGroup(tenantId, dto.customerGroupId);
-    return this.prisma.customer.update({
+    const { addresses, ...data } = dto;
+    await this.prisma.customer.update({
       where: { id },
       data: {
-        ...dto,
+        ...data,
         email: dto.email?.trim().toLowerCase(),
         blockedAt:
           dto.status === 'BLOCKED' ? new Date() : dto.status ? null : undefined,
       },
     });
+    if (addresses) {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.customerAddress.deleteMany({
+          where: { tenantId, customerId: id },
+        });
+        if (addresses.length)
+          await tx.customerAddress.createMany({
+            data: addresses.map(({ id: addressId, ...address }) => ({
+              id: addressId ?? crypto.randomUUID(),
+              tenantId,
+              customerId: id,
+              ...address,
+            })),
+          });
+      });
+    }
+    return this.findOne(tenantId, id);
   }
 
   async remove(tenantId: string, id: string) {
@@ -106,5 +137,35 @@ export class CustomersService {
       where: { id: groupId, tenantId, enabled: true },
     });
     if (!group) throw new NotFoundException('Grupo de clientes no encontrado');
+  }
+
+  private async views(
+    tenantId: string,
+    customers: Array<{ id: string } & Record<string, unknown>>,
+  ) {
+    const ids = customers.map((customer) => customer.id);
+    const [addresses, saleStats] = await Promise.all([
+      this.prisma.customerAddress.findMany({
+        where: { tenantId, customerId: { in: ids } },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.sale.groupBy({
+        by: ['customerId'],
+        where: { tenantId, customerId: { in: ids }, status: 'CONFIRMED' },
+        _count: { id: true },
+        _sum: { total: true },
+      }),
+    ]);
+    return customers.map((customer) => {
+      const stats = saleStats.find((item) => item.customerId === customer.id);
+      return {
+        ...customer,
+        addresses: addresses.filter(
+          (address) => address.customerId === customer.id,
+        ),
+        salesCount: stats?._count.id ?? 0,
+        totalSpent: stats?._sum.total ?? 0,
+      };
+    });
   }
 }

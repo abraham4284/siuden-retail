@@ -50,6 +50,22 @@ enum SellingMode {
   INQUIRY_ONLY
 }
 
+enum StoreContactChannelType {
+  WHATSAPP
+  FACEBOOK
+  INSTAGRAM
+  MESSENGER
+  EMAIL
+  OTHER
+}
+
+enum CustomerAddressType {
+  HOME
+  BILLING
+  SHIPPING
+  OTHER
+}
+
 enum CustomerSource {
   STOREFRONT
   POS
@@ -242,6 +258,62 @@ model StorefrontSetting {
   @@map("storefront_settings")
 }
 
+model StoreProfile {
+  id            String   @id @db.Char(36)
+  tenantId      String   @unique(map: "uq_store_profiles_tenant") @map("tenant_id") @db.Char(36)
+  brandName     String   @map("brand_name") @db.VarChar(150)
+  contactEmail  String?  @map("contact_email") @db.VarChar(254)
+  phone         String?  @db.VarChar(40)
+  addressLine   String?  @map("address_line") @db.VarChar(200)
+  addressNumber String?  @map("address_number") @db.VarChar(30)
+  city          String?  @db.VarChar(100)
+  province      String?  @db.VarChar(100)
+  postalCode    String?  @map("postal_code") @db.VarChar(20)
+  countryCode   String   @default("AR") @map("country_code") @db.Char(2)
+  createdAt     DateTime @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.DateTime(6)
+
+  @@map("store_profiles")
+}
+
+model StoreTheme {
+  id                  String   @id @db.Char(36)
+  tenantId            String   @unique(map: "uq_store_themes_tenant") @map("tenant_id") @db.Char(36)
+  logoAssetId         String?  @map("logo_asset_id") @db.Char(36)
+  faviconAssetId      String?  @map("favicon_asset_id") @db.Char(36)
+  primaryColor        String   @default("#111111") @map("primary_color") @db.Char(7)
+  secondaryColor      String   @default("#6B7280") @map("secondary_color") @db.Char(7)
+  backgroundColor     String   @default("#FFFFFF") @map("background_color") @db.Char(7)
+  textColor           String   @default("#111111") @map("text_color") @db.Char(7)
+  headingFont         String   @default("Merriweather") @map("heading_font") @db.VarChar(100)
+  bodyFont            String   @default("Lora") @map("body_font") @db.VarChar(100)
+  borderRadius        String   @default("NONE") @map("border_radius") @db.VarChar(30)
+  announcementEnabled Boolean  @default(false) @map("announcement_enabled")
+  announcementText    String?  @map("announcement_text") @db.VarChar(255)
+  announcementUrl     String?  @map("announcement_url") @db.VarChar(500)
+  createdAt           DateTime @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.DateTime(6)
+
+  @@index([tenantId, logoAssetId], map: "idx_store_themes_logo")
+  @@index([tenantId, faviconAssetId], map: "idx_store_themes_favicon")
+  @@map("store_themes")
+}
+
+model StoreContactChannel {
+  id          String                  @id @db.Char(36)
+  tenantId    String                  @map("tenant_id") @db.Char(36)
+  channelType StoreContactChannelType @map("channel_type")
+  value       String?                 @db.VarChar(255)
+  url         String?                 @db.VarChar(500)
+  enabled     Boolean                 @default(true)
+  sortOrder   Int                     @default(0) @map("sort_order") @db.UnsignedInt
+  createdAt   DateTime                @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt   DateTime                @updatedAt @map("updated_at") @db.DateTime(6)
+
+  @@unique([tenantId, channelType], map: "uq_store_contact_channels_tenant_type")
+  @@map("store_contact_channels")
+}
+
 model MediaAsset {
   id             String      @id @db.Char(36)
   tenantId       String      @map("tenant_id") @db.Char(36)
@@ -315,6 +387,45 @@ model ProductCategory {
   @@index([tenantId, categoryId, sortOrder], map: "idx_product_categories_tenant_category")
   @@index([tenantId, productId], map: "idx_product_categories_tenant_product")
   @@map("product_categories")
+}
+
+model ProductOption {
+  id        String   @id @db.Char(36)
+  tenantId  String   @map("tenant_id") @db.Char(36)
+  productId String   @map("product_id") @db.Char(36)
+  name      String   @db.VarChar(100)
+  sortOrder Int      @default(0) @map("sort_order") @db.UnsignedInt
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(6)
+
+  @@unique([tenantId, productId, name], map: "uq_product_options_product_name")
+  @@unique([tenantId, id], map: "uq_product_options_tenant_id")
+  @@map("product_options")
+}
+
+model ProductOptionValue {
+  id              String   @id @db.Char(36)
+  tenantId        String   @map("tenant_id") @db.Char(36)
+  productOptionId String   @map("product_option_id") @db.Char(36)
+  value           String   @db.VarChar(100)
+  sortOrder       Int      @default(0) @map("sort_order") @db.UnsignedInt
+  createdAt       DateTime @default(now()) @map("created_at") @db.DateTime(6)
+
+  @@unique([tenantId, productOptionId, value], map: "uq_product_option_values_option_value")
+  @@unique([tenantId, id], map: "uq_product_option_values_tenant_id")
+  @@map("product_option_values")
+}
+
+model ProductVariantOptionValue {
+  tenantId            String   @map("tenant_id") @db.Char(36)
+  productVariantId    String   @map("product_variant_id") @db.Char(36)
+  productOptionValueId String  @map("product_option_value_id") @db.Char(36)
+  createdAt           DateTime @default(now()) @map("created_at") @db.DateTime(6)
+
+  @@id([productVariantId, productOptionValueId])
+  @@index([tenantId, productOptionValueId], map: "idx_variant_option_values_tenant_value")
+  @@index([tenantId, productVariantId], map: "idx_variant_option_values_tenant_variant")
+  @@map("product_variant_option_values")
 }
 
 model ProductVariant {
@@ -453,6 +564,28 @@ model Customer {
   @@index([tenantId, email], map: "idx_customers_tenant_email")
   @@index([tenantId, phone], map: "idx_customers_tenant_phone")
   @@map("customers")
+}
+
+model CustomerAddress {
+  id          String              @id @db.Char(36)
+  tenantId    String              @map("tenant_id") @db.Char(36)
+  customerId  String              @map("customer_id") @db.Char(36)
+  addressType CustomerAddressType @default(HOME) @map("address_type")
+  label       String?             @db.VarChar(80)
+  street      String              @db.VarChar(200)
+  number      String?             @db.VarChar(30)
+  floor       String?             @db.VarChar(20)
+  apartment   String?             @db.VarChar(20)
+  city        String              @db.VarChar(100)
+  province    String              @db.VarChar(100)
+  postalCode  String?             @map("postal_code") @db.VarChar(20)
+  countryCode String              @default("AR") @map("country_code") @db.Char(2)
+  isDefault   Boolean             @default(false) @map("is_default")
+  createdAt   DateTime            @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt   DateTime            @updatedAt @map("updated_at") @db.DateTime(6)
+
+  @@index([tenantId, customerId], map: "idx_customer_addresses_customer")
+  @@map("customer_addresses")
 }
 
 model PaymentMethod {

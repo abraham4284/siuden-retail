@@ -74,11 +74,9 @@ export function createMockServices(delayMs = 90, repository = new MockRepository
   };
 }
 
-const repository = new MockRepository(90);
-const mockServices = createMockServices(90, repository);
 export const services = import.meta.env.VITE_USE_MOCKS === "true"
-  ? mockServices
-  : createHttpServices(mockServices, repository);
+  ? createMockServices()
+  : createHttpServices();
 
 export { MockRepository, MockServiceError } from "@/services/mock-repository";
 export { DEMO_CREDENTIALS, MOCK_DATA_VERSION, MOCK_STORAGE_KEY } from "@/mocks/seed";

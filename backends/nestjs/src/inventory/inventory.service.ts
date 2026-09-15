@@ -18,10 +18,40 @@ export class InventoryService {
   constructor(private readonly prisma: PrismaService) {}
 
   async balances(tenantId: string, query: StockQueryDto) {
+    const matchingVariants =
+      query.search || query.categoryId
+        ? await this.prisma.productVariant.findMany({
+            where: {
+              tenantId,
+              deletedAt: null,
+              OR: query.search
+                ? [
+                    { name: { contains: query.search } },
+                    { sku: { contains: query.search } },
+                  ]
+                : undefined,
+              productId: query.categoryId
+                ? {
+                    in: (
+                      await this.prisma.productCategory.findMany({
+                        where: { tenantId, categoryId: query.categoryId },
+                        select: { productId: true },
+                      })
+                    ).map((item) => item.productId),
+                  }
+                : undefined,
+            },
+            select: { id: true },
+          })
+        : undefined;
     const where: Prisma.InventoryBalanceWhereInput = {
       tenantId,
       stockLocationId: query.stockLocationId,
-      productVariantId: query.productVariantId,
+      productVariantId:
+        query.productVariantId ??
+        (matchingVariants
+          ? { in: matchingVariants.map((item) => item.id) }
+          : undefined),
     };
     const [data, total] = await this.prisma.$transaction([
       this.prisma.inventoryBalance.findMany({
@@ -37,14 +67,66 @@ export class InventoryService {
         id: { in: data.map((item) => item.productVariantId) },
       },
     });
+    const products = await this.prisma.product.findMany({
+      where: { tenantId, id: { in: variants.map((item) => item.productId) } },
+    });
+    const assignments = await this.prisma.productCategory.findMany({
+      where: { tenantId, productId: { in: products.map((item) => item.id) } },
+    });
+    const categories = await this.prisma.category.findMany({
+      where: {
+        tenantId,
+        id: { in: assignments.map((item) => item.categoryId) },
+      },
+    });
     return paginated(
-      data.map((balance) => ({
-        ...balance,
-        available: balance.onHand.sub(balance.reserved),
-        variant: variants.find(
-          (variant) => variant.id === balance.productVariantId,
+      data
+        .map((balance) => {
+          const variant = variants.find(
+            (item) => item.id === balance.productVariantId,
+          );
+          const product = products.find(
+            (item) => item.id === variant?.productId,
+          );
+          const available = balance.onHand.sub(balance.reserved);
+          const threshold = balance.lowStockThreshold;
+          return {
+            tenantId,
+            stockLocationId: balance.stockLocationId,
+            productId: product?.id ?? '',
+            variantId: balance.productVariantId,
+            productName: product?.name ?? 'Producto',
+            variantName: variant?.name ?? 'Variante',
+            sku: variant?.sku ?? null,
+            imageUrl: null,
+            categoryNames: assignments
+              .filter((item) => item.productId === product?.id)
+              .map(
+                (item) =>
+                  categories.find((category) => category.id === item.categoryId)
+                    ?.name,
+              )
+              .filter(Boolean),
+            onHand: balance.onHand,
+            reserved: balance.reserved,
+            available,
+            lowStockThreshold: threshold,
+            trackInventory: variant?.trackInventory ?? true,
+            status: !variant?.trackInventory
+              ? 'NOT_TRACKED'
+              : available.lte(0)
+                ? 'OUT_OF_STOCK'
+                : threshold && available.lte(threshold)
+                  ? 'LOW_STOCK'
+                  : 'IN_STOCK',
+          };
+        })
+        .filter(
+          (item) =>
+            !query.status ||
+            query.status === 'ALL' ||
+            item.status === query.status,
         ),
-      })),
       total,
       query,
     );
@@ -62,6 +144,13 @@ export class InventoryService {
       tenantId,
       stockLocationId: query.stockLocationId,
       movementType: query.movementType,
+      occurredAt:
+        query.from || query.to
+          ? {
+              gte: query.from ? new Date(query.from) : undefined,
+              lte: query.to ? new Date(query.to) : undefined,
+            }
+          : undefined,
       OR: query.search
         ? [
             { movementNumber: { contains: query.search } },
@@ -83,10 +172,47 @@ export class InventoryService {
         stockMovementId: { in: data.map((movement) => movement.id) },
       },
     });
+    const variants = await this.prisma.productVariant.findMany({
+      where: {
+        tenantId,
+        id: { in: items.map((item) => item.productVariantId) },
+      },
+    });
+    const products = await this.prisma.product.findMany({
+      where: { tenantId, id: { in: variants.map((item) => item.productId) } },
+    });
+    const users = await this.prisma.user.findMany({
+      where: {
+        id: {
+          in: data.flatMap((item) =>
+            item.createdByUserId ? [item.createdByUserId] : [],
+          ),
+        },
+      },
+      select: { id: true, displayName: true },
+    });
     return paginated(
       data.map((movement) => ({
         ...movement,
-        items: items.filter((item) => item.stockMovementId === movement.id),
+        type: movement.movementType,
+        createdBy:
+          users.find((user) => user.id === movement.createdByUserId) ?? null,
+        items: items
+          .filter((item) => item.stockMovementId === movement.id)
+          .map((item) => {
+            const variant = variants.find(
+              (candidate) => candidate.id === item.productVariantId,
+            );
+            const product = products.find(
+              (candidate) => candidate.id === variant?.productId,
+            );
+            return {
+              ...item,
+              productName: product?.name ?? 'Producto',
+              variantName: variant?.name ?? 'Variante',
+              sku: variant?.sku ?? null,
+            };
+          }),
       })),
       total,
       query,
@@ -173,6 +299,18 @@ export class InventoryService {
             delta,
             settings?.allowNegativeStock ?? false,
           );
+          if (item.lowStockThreshold !== undefined) {
+            await tx.inventoryBalance.update({
+              where: {
+                tenantId_stockLocationId_productVariantId: {
+                  tenantId,
+                  stockLocationId: dto.stockLocationId,
+                  productVariantId: item.productVariantId,
+                },
+              },
+              data: { lowStockThreshold: item.lowStockThreshold },
+            });
+          }
           await tx.stockMovementItem.create({
             data: {
               id: crypto.randomUUID(),
@@ -187,6 +325,14 @@ export class InventoryService {
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
-    return this.prisma.stockMovement.findUnique({ where: { id: movementId } });
+    const movement = await this.prisma.stockMovement.findUnique({
+      where: { id: movementId },
+    });
+    const inventory = await this.balances(tenantId, {
+      page: 1,
+      limit: 100,
+      stockLocationId: dto.stockLocationId,
+    });
+    return { movement, inventory: inventory.data };
   }
 }

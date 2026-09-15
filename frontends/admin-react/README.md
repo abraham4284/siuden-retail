@@ -1,11 +1,11 @@
 # Siuden Retail · Administrador
 
-SPA administrativa de Siuden Retail para el comercio Rubí Joyería. El login, la restauración de sesión, el logout y la administración global de cuentas ya consumen la API NestJS. Los módulos comerciales continúan detrás del repositorio mock durante la migración progresiva.
+SPA administrativa de Siuden Retail para el comercio Rubí Joyería. Con `VITE_USE_MOCKS=false`, autenticación, cuentas, dashboard, catálogo, inventario, clientes, ventas y configuración consumen la API NestJS.
 
 ## Stack
 
 - React, Vite y TypeScript estricto.
-- React Router y TanStack Query.
+- React Router, TanStack Query y Axios.
 - Zustand únicamente para el borrador compartido del POS.
 - React Hook Form y Zod.
 - Tailwind CSS, componentes estilo shadcn/Radix UI y Lucide React.
@@ -42,22 +42,24 @@ Para volver al seed inicial, abrí el menú de usuario en la barra superior y el
 
 ## Arquitectura de datos
 
-El flujo de lectura y mutación es:
+El flujo de lectura y mutación en modo API es:
 
 ```text
 Componente React
 → hook de TanStack Query (`src/hooks/use-services.ts`)
 → contratos (`src/services/contracts.ts`)
 → composición de servicios (`src/services/index.ts`)
-→ repositorio mock (`src/services/mock-repository.ts`)
-→ seed persistente (`src/mocks/seed.ts`)
+→ adaptador Axios (`src/services/http-services.ts`)
+→ API NestJS
 ```
+
+Con `VITE_USE_MOCKS=true`, la composición sustituye el adaptador Axios por `src/services/mock-repository.ts` y su seed persistente.
 
 Las pantallas no importan datos simulados directamente. Las query keys comerciales incluyen el tenant obtenido de la sesión.
 
 ### Integración progresiva con NestJS
 
-`src/services/http-services.ts` implementa actualmente `auth` y `accounts`. `src/services/index.ts` lo selecciona cuando `VITE_USE_MOCKS=false` y conserva el repositorio mock como adaptador temporal para dashboard, catálogo, inventario, clientes, ventas y configuración. Al migrar cada dominio, se reemplaza únicamente esa sección del contrato `Services`.
+`src/services/http-services.ts` implementa todos los contratos del administrador. `src/services/index.ts` solo crea el repositorio mock cuando `VITE_USE_MOCKS=true`; en modo API no existe fallback silencioso a datos locales.
 
 La ruta `/accounts` aparece únicamente para `PLATFORM_ADMIN`, lista las cuentas reales y crea cuenta, tenant, roles y propietario mediante `POST /api/v1/accounts`.
 
@@ -70,7 +72,7 @@ VITE_API_BASE_URL=http://localhost:3001/api/v1
 VITE_USE_MOCKS=false
 ```
 
-`VITE_API_BASE_URL` define la base de NestJS. Usar `VITE_USE_MOCKS=true` solamente para la demostración completamente local; con `false`, autenticación y cuentas son reales.
+`VITE_API_BASE_URL` define la base de NestJS. Axios envía la cookie de sesión mediante `withCredentials`. Usar `VITE_USE_MOCKS=true` solamente para la demostración completamente local; con `false`, todos los módulos consumen datos reales.
 
 ## Fallback de SPA
 

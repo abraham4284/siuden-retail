@@ -69,6 +69,18 @@ export class CategoriesController {
   remove(@CurrentUser() user: AuthenticatedUser, @Param() params: IdParamDto) {
     return this.categories.remove(user.tenantId, params.id);
   }
+
+  @Permissions('categories.write')
+  @Post('reorder')
+  async reorder(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body()
+    items: Array<{ id: string; parentId: string | null; sortOrder: number }>,
+  ) {
+    for (const item of items)
+      await this.categories.update(user.tenantId, item.id, item);
+    return this.categories.findAll(user.tenantId);
+  }
 }
 
 @ApiBearerAuth()

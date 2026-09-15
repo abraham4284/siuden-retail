@@ -63,6 +63,11 @@ Todos los endpoints salvo login y health requieren `Authorization: Bearer <token
 - `GET|POST /api/v1/sales`, `GET /api/v1/sales/:id`, `POST /api/v1/sales/:id/cancel`
 - `GET|POST /api/v1/suppliers`, `GET|PATCH|DELETE /api/v1/suppliers/:id`
 - `GET|POST /api/v1/purchases`, `GET /api/v1/purchases/:id`, `POST /api/v1/purchases/:id/receive`
+- `GET /api/v1/dashboard`
+- `GET|PUT /api/v1/store/profile|settings|theme|contacts`
+- `GET /api/v1/storefront/catalog/:tenantSlug` (público)
+
+El catálogo inicial puede completarse de forma independiente e idempotente con `pnpm prisma:seed:catalog`. Usa el tenant y la ubicación de Rubí por defecto; para otro destino se pueden definir `SEED_CATALOG_TENANT_ID` y `SEED_CATALOG_LOCATION_ID`. El script no modifica usuarios, contraseñas ni ventas existentes, y no sobrescribe el stock operativo cuando el balance ya existe.
 
 Los listados aceptan `page`, `limit` (máximo 100) y `search`; los recursos principales agregan filtros propios documentados en Swagger.
 

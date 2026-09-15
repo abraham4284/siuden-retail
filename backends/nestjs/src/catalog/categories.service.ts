@@ -7,11 +7,23 @@ import { CreateCategoryDto, UpdateCategoryDto } from './dto/category.dto';
 export class CategoriesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll(tenantId: string) {
-    return this.prisma.category.findMany({
+  async findAll(tenantId: string) {
+    const categories = await this.prisma.category.findMany({
       where: { tenantId, deletedAt: null },
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
     });
+    const counts = await this.prisma.productCategory.groupBy({
+      by: ['categoryId'],
+      where: { tenantId },
+      _count: { productId: true },
+    });
+    return categories.map((category) => ({
+      ...category,
+      productCount:
+        counts.find((item) => item.categoryId === category.id)?._count
+          .productId ?? 0,
+      externalMappings: [],
+    }));
   }
 
   async findOne(tenantId: string, id: string) {

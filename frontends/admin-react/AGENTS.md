@@ -15,6 +15,7 @@ Estas reglas aplican exclusivamente a `frontends/admin-react/`.
 - React, Vite y TypeScript estricto.
 - React Router para rutas y protección de navegación.
 - TanStack Query para sesión y datos remotos.
+- Axios es el cliente HTTP obligatorio. Centralizar `baseURL`, `withCredentials` y la normalización de errores en `src/services/http-services.ts`; no usar `fetch` directamente en componentes, hooks ni servicios.
 - Zustand únicamente para el borrador compartido del POS.
 - React Hook Form y Zod para formularios y validación.
 - Tailwind CSS, componentes estilo shadcn/Radix UI y Lucide React.

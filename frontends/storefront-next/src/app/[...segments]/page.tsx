@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { CategoryStorefront } from "@/components/storefront/category-storefront";
 import { TenantStorefront } from "@/components/storefront/tenant-storefront";
 import { tenants } from "@/config/tenants";
-import { findCategoryByRoute, getCategoryRouteSegments } from "@/lib/categories";
+import { findCategoryByRoute } from "@/lib/categories";
 import { getTenantBySlug, getTenantStoreData } from "@/lib/tenants";
 
 type StorefrontRouteProps = {
@@ -30,7 +30,7 @@ const resolveRoute = (segments: string[]) => {
   };
 };
 
-export const dynamicParams = false;
+export const dynamicParams = true;
 
 export function generateStaticParams() {
   const paths: Array<{ segments: string[] }> = [];
@@ -38,18 +38,7 @@ export function generateStaticParams() {
   tenants
     .filter((tenant) => tenant.enabled && tenant.settings.isPublished)
     .forEach((tenant) => {
-      const store = getTenantStoreData(tenant.slug);
-      if (!store) return;
-
       paths.push({ segments: [tenant.slug] });
-      store.allCategories.forEach((category) => {
-        const categorySegments = getCategoryRouteSegments(category, store.allCategories);
-        paths.push({ segments: [tenant.slug, ...categorySegments] });
-
-        if (tenant.slug === DEFAULT_TENANT_SLUG) {
-          paths.push({ segments: categorySegments });
-        }
-      });
     });
 
   return paths;
@@ -58,7 +47,7 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: StorefrontRouteProps): Promise<Metadata> {
   const { segments } = await params;
   const route = resolveRoute(segments);
-  const store = getTenantStoreData(route.tenantSlug);
+  const store = await getTenantStoreData(route.tenantSlug);
 
   if (!store) return {};
 
@@ -77,7 +66,7 @@ export async function generateMetadata({ params }: StorefrontRouteProps): Promis
 export default async function StorefrontRoute({ params }: StorefrontRouteProps) {
   const { segments } = await params;
   const route = resolveRoute(segments);
-  const store = getTenantStoreData(route.tenantSlug);
+  const store = await getTenantStoreData(route.tenantSlug);
 
   if (!store) notFound();
 

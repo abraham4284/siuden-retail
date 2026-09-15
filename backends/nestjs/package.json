@@ -17,7 +17,8 @@
     "prisma:generate": "prisma generate",
     "prisma:validate": "prisma validate",
     "prisma:pull": "prisma db pull",
-    "prisma:seed": "nest build && node dist/prisma/seed.js"
+    "prisma:seed": "nest build && node dist/prisma/seed.js",
+    "prisma:seed:catalog": "nest build && node dist/prisma/seed-catalog.js"
   },
   "prisma": {
     "seed": "nest build && node dist/prisma/seed.js"

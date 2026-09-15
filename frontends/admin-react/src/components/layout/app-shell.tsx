@@ -305,7 +305,7 @@ export function AppShell() {
                   <p className="text-sm font-semibold">{session?.user.displayName}</p>
                   <p className="truncate text-xs text-muted-foreground">{session?.user.email}</p>
                 </div>
-                <button
+                {import.meta.env.VITE_USE_MOCKS === "true" ? <button
                   className="mt-2 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted"
                   role="menuitem"
                   onClick={async () => {
@@ -318,7 +318,7 @@ export function AppShell() {
                 >
                   <ArchiveRestore className="size-4" />
                   {reset.isPending ? "Restableciendo…" : "Restablecer datos de demostración"}
-                </button>
+                </button> : null}
                 <a
                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted sm:hidden"
                   href="https://rubijoyeria.empretienda.com.ar"

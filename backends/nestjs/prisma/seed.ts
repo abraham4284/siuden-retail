@@ -225,6 +225,60 @@ async function main(): Promise<void> {
     },
     update: {},
   });
+  await prisma.storeProfile.upsert({
+    where: { tenantId: IDS.tenant },
+    create: {
+      id: '70000000-0000-4000-8000-000000000001',
+      tenantId: IDS.tenant,
+      brandName: 'Rubí Joyería',
+      contactEmail: 'rubi.joyeria803@gmail.com',
+      phone: '3816776136',
+      addressLine: 'Mendoza',
+      addressNumber: '803',
+      city: 'San Miguel de Tucumán',
+      province: 'Tucumán',
+      countryCode: 'AR',
+    },
+    update: {},
+  });
+  await prisma.storeTheme.upsert({
+    where: { tenantId: IDS.tenant },
+    create: {
+      id: '70000000-0000-4000-8000-000000000003',
+      tenantId: IDS.tenant,
+      primaryColor: '#74263A',
+      secondaryColor: '#312A2B',
+      backgroundColor: '#F8F6F1',
+      textColor: '#292526',
+      headingFont: 'Merriweather',
+      bodyFont: 'Lora',
+      borderRadius: '0rem',
+      announcementEnabled: true,
+      announcementText: 'ENVÍO GRATIS a todo San Miguel de Tucumán',
+      announcementUrl: 'https://www.instagram.com/rubijoyerias',
+    },
+    update: {},
+  });
+  for (const [channelType, value, url, sortOrder] of [
+    ['WHATSAPP', '3816776136', 'https://wa.me/5493816776136', 0],
+    ['INSTAGRAM', 'rubijoyerias', 'https://www.instagram.com/rubijoyerias', 1],
+    ['FACEBOOK', 'rubijoyerias', 'https://www.facebook.com/rubijoyerias', 2],
+  ] as const) {
+    await prisma.storeContactChannel.upsert({
+      where: {
+        tenantId_channelType: { tenantId: IDS.tenant, channelType },
+      },
+      create: {
+        id: crypto.randomUUID(),
+        tenantId: IDS.tenant,
+        channelType,
+        value,
+        url,
+        sortOrder,
+      },
+      update: {},
+    });
+  }
   await prisma.stockLocation.upsert({
     where: { tenantId_code: { tenantId: IDS.tenant, code: 'MAIN' } },
     create: {

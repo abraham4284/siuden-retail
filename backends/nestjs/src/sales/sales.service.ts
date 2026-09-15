@@ -20,7 +20,15 @@ export class SalesService {
     const where: Prisma.SaleWhereInput = {
       tenantId,
       status: query.status,
+      channel: query.channel,
       customerId: query.customerId,
+      soldAt:
+        query.from || query.to
+          ? {
+              gte: query.from ? new Date(query.from) : undefined,
+              lte: query.to ? new Date(query.to) : undefined,
+            }
+          : undefined,
       stockLocationId: query.stockLocationId,
       OR: query.search
         ? [
@@ -38,16 +46,13 @@ export class SalesService {
       }),
       this.prisma.sale.count({ where }),
     ]);
-    return paginated(data, total, query);
+    return paginated(await this.views(tenantId, data), total, query);
   }
 
   async findOne(tenantId: string, id: string) {
     const sale = await this.prisma.sale.findFirst({ where: { id, tenantId } });
     if (!sale) throw new NotFoundException('Venta no encontrada');
-    const items = await this.prisma.saleItem.findMany({
-      where: { tenantId, saleId: id },
-    });
-    return { ...sale, items };
+    return (await this.views(tenantId, [sale]))[0];
   }
 
   async create(tenantId: string, userId: string, dto: CreateSaleDto) {
@@ -129,6 +134,7 @@ export class SalesService {
     const total = subtotal.sub(discountTotal);
     const saleId = crypto.randomUUID();
 
+    let movementId = '';
     await this.prisma.$transaction(
       async (tx) => {
         const saleNumber = await nextDocumentNumber(tx, tenantId, 'SALE');
@@ -164,7 +170,7 @@ export class SalesService {
             createdByUserId: userId,
           },
         });
-        const movementId = crypto.randomUUID();
+        movementId = crypto.randomUUID();
         await tx.stockMovement.create({
           data: {
             id: movementId,
@@ -217,7 +223,12 @@ export class SalesService {
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
-    return this.findOne(tenantId, saleId);
+    return {
+      sale: await this.findOne(tenantId, saleId),
+      movement: await this.prisma.stockMovement.findUniqueOrThrow({
+        where: { id: movementId },
+      }),
+    };
   }
 
   async cancel(
@@ -232,6 +243,7 @@ export class SalesService {
       throw new BadRequestException(
         'Solo se puede anular una venta confirmada',
       );
+    let reversalId = '';
     await this.prisma.$transaction(
       async (tx) => {
         const original = await tx.stockMovement.findFirst({
@@ -254,7 +266,7 @@ export class SalesService {
           tenantId,
           'STOCK_MOVEMENT',
         );
-        const reversalId = crypto.randomUUID();
+        reversalId = crypto.randomUUID();
         await tx.stockMovement.create({
           data: {
             id: reversalId,
@@ -301,6 +313,39 @@ export class SalesService {
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
-    return this.findOne(tenantId, id);
+    return {
+      sale: await this.findOne(tenantId, id),
+      reversalMovement: await this.prisma.stockMovement.findUniqueOrThrow({
+        where: { id: reversalId },
+      }),
+    };
+  }
+
+  private async views(
+    tenantId: string,
+    sales: Array<
+      { id: string; createdByUserId: string | null } & Record<string, unknown>
+    >,
+  ) {
+    const items = await this.prisma.saleItem.findMany({
+      where: { tenantId, saleId: { in: sales.map((sale) => sale.id) } },
+    });
+    const users = await this.prisma.user.findMany({
+      where: {
+        id: {
+          in: sales.flatMap((sale) =>
+            sale.createdByUserId ? [sale.createdByUserId] : [],
+          ),
+        },
+      },
+      select: { id: true, displayName: true },
+    });
+    return sales.map((sale) => ({
+      ...sale,
+      createdByName:
+        users.find((user) => user.id === sale.createdByUserId)?.displayName ??
+        null,
+      items: items.filter((item) => item.saleId === sale.id),
+    }));
   }
 }

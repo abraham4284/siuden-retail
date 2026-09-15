@@ -49,10 +49,14 @@ export class SaleQueryDto extends PaginationDto {
   @IsOptional() @IsEnum(SaleStatus) status?: SaleStatus;
   @IsOptional() @IsUUID() customerId?: string;
   @IsOptional() @IsUUID() stockLocationId?: string;
+  @IsOptional() @IsEnum(SaleChannel) channel?: SaleChannel;
+  @IsOptional() @IsString() from?: string;
+  @IsOptional() @IsString() to?: string;
 }
 
 export class CancelSaleDto {
+  @IsOptional()
   @IsString()
   @MaxLength(255)
-  reason: string;
+  reason?: string;
 }

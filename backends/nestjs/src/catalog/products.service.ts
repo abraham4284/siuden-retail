@@ -43,7 +43,13 @@ export class ProductsService {
       }),
       this.prisma.product.count({ where }),
     ]);
-    return paginated(data, total, query);
+    return paginated(
+      await Promise.all(
+        data.map((product) => this.findOne(tenantId, product.id)),
+      ),
+      total,
+      query,
+    );
   }
 
   async findOne(tenantId: string, id: string) {
@@ -51,7 +57,7 @@ export class ProductsService {
       where: { id, tenantId, deletedAt: null },
     });
     if (!product) throw new NotFoundException('Producto no encontrado');
-    const [variants, imageLinks, categoryLinks] = await Promise.all([
+    const [variants, imageLinks, categoryLinks, options] = await Promise.all([
       this.prisma.productVariant.findMany({
         where: { tenantId, productId: id, deletedAt: null },
         orderBy: { sortOrder: 'asc' },
@@ -63,8 +69,12 @@ export class ProductsService {
       this.prisma.productCategory.findMany({
         where: { tenantId, productId: id },
       }),
+      this.prisma.productOption.findMany({
+        where: { tenantId, productId: id },
+        orderBy: { sortOrder: 'asc' },
+      }),
     ]);
-    const [assets, categories] = await Promise.all([
+    const [assets, optionValues, variantOptionValues] = await Promise.all([
       this.prisma.mediaAsset.findMany({
         where: {
           tenantId,
@@ -72,21 +82,56 @@ export class ProductsService {
           status: 'ACTIVE',
         },
       }),
-      this.prisma.category.findMany({
+      this.prisma.productOptionValue.findMany({
         where: {
           tenantId,
-          id: { in: categoryLinks.map((item) => item.categoryId) },
-          deletedAt: null,
+          productOptionId: { in: options.map((item) => item.id) },
+        },
+        orderBy: { sortOrder: 'asc' },
+      }),
+      this.prisma.productVariantOptionValue.findMany({
+        where: {
+          tenantId,
+          productVariantId: { in: variants.map((item) => item.id) },
         },
       }),
     ]);
     return {
       ...product,
-      variants,
-      categories,
+      variants: variants.map((variant) => ({
+        ...variant,
+        dimensions: {
+          weightKg: variant.weightKg,
+          heightCm: variant.heightCm,
+          widthCm: variant.widthCm,
+          depthCm: variant.depthCm,
+        },
+        selectedOptionValueIds: variantOptionValues
+          .filter((item) => item.productVariantId === variant.id)
+          .map((item) => item.productOptionValueId),
+      })),
+      categoryAssignments: categoryLinks.map(
+        ({ categoryId, isPrimary, sortOrder }) => ({
+          categoryId,
+          isPrimary,
+          sortOrder,
+        }),
+      ),
+      options: options.map((option) => ({
+        ...option,
+        values: optionValues.filter(
+          (value) => value.productOptionId === option.id,
+        ),
+      })),
       images: imageLinks.map((link) => ({
         ...link,
-        asset: assets.find((asset) => asset.id === link.mediaAssetId),
+        url: (() => {
+          const asset = assets.find((item) => item.id === link.mediaAssetId);
+          return asset ? `/${asset.storageKey.replace(/^\/+/, '')}` : '';
+        })(),
+        altText:
+          assets.find((asset) => asset.id === link.mediaAssetId)?.altText ??
+          null,
       })),
     };
   }
@@ -123,16 +168,67 @@ export class ProductsService {
       const variants = dto.variants?.length
         ? dto.variants
         : [{ name: 'Default', isDefault: true }];
-      await tx.productVariant.createMany({
-        data: variants.map((variant, index) => ({
-          id: crypto.randomUUID(),
-          tenantId,
-          productId: id,
-          ...variant,
-          name: variant.name.trim(),
-          isDefault: variant.isDefault ?? index === 0,
-        })),
-      });
+      const optionIdMap = new Map<string, string>();
+      const valueIdMap = new Map<string, string>();
+      for (const [optionIndex, option] of (dto.options ?? []).entries()) {
+        const optionId = option.id ?? crypto.randomUUID();
+        if (option.id) optionIdMap.set(option.id, optionId);
+        await tx.productOption.create({
+          data: {
+            id: optionId,
+            tenantId,
+            productId: id,
+            name: option.name.trim(),
+            sortOrder: option.sortOrder ?? optionIndex,
+          },
+        });
+        for (const [valueIndex, value] of option.values.entries()) {
+          const valueId = value.id ?? crypto.randomUUID();
+          if (value.id) valueIdMap.set(value.id, valueId);
+          await tx.productOptionValue.create({
+            data: {
+              id: valueId,
+              tenantId,
+              productOptionId: optionId,
+              value: value.value.trim(),
+              sortOrder: value.sortOrder ?? valueIndex,
+            },
+          });
+        }
+      }
+      const variantRows = variants.map((variant, index) => ({
+        id: variant.id ?? crypto.randomUUID(),
+        tenantId,
+        productId: id,
+        name: variant.name.trim(),
+        sku: variant.sku,
+        barcode: variant.barcode,
+        price: variant.price,
+        compareAtPrice: variant.compareAtPrice,
+        cost: variant.cost,
+        weightKg: variant.weightKg,
+        heightCm: variant.heightCm,
+        widthCm: variant.widthCm,
+        depthCm: variant.depthCm,
+        trackInventory: variant.trackInventory,
+        allowBackorder: variant.allowBackorder,
+        isDefault: variant.isDefault ?? index === 0,
+        enabled: variant.enabled,
+        sortOrder: variant.sortOrder,
+      }));
+      await tx.productVariant.createMany({ data: variantRows });
+      for (const [index, variant] of variants.entries()) {
+        for (const draftValueId of variant.selectedOptionValueIds ?? []) {
+          await tx.productVariantOptionValue.create({
+            data: {
+              tenantId,
+              productVariantId: variantRows[index].id,
+              productOptionValueId:
+                valueIdMap.get(draftValueId) ?? draftValueId,
+            },
+          });
+        }
+      }
     });
     return this.findOne(tenantId, id);
   }
@@ -140,8 +236,7 @@ export class ProductsService {
   async update(tenantId: string, id: string, dto: UpdateProductDto) {
     const existing = await this.findOne(tenantId, id);
     await this.assertCategories(tenantId, dto.categoryIds);
-    const { categoryIds, variants: _variants, ...data } = dto;
-    void _variants;
+    const { categoryIds, variants, options, ...data } = dto;
     await this.prisma.$transaction(async (tx) => {
       await tx.product.update({
         where: { id },
@@ -171,6 +266,93 @@ export class ProductsService {
               sortOrder: index,
             })),
           });
+        }
+      }
+      if (options) {
+        await tx.productVariantOptionValue.deleteMany({
+          where: {
+            tenantId,
+            productVariantId: { in: existing.variants.map((item) => item.id) },
+          },
+        });
+        await tx.productOptionValue.deleteMany({
+          where: {
+            tenantId,
+            productOptionId: { in: existing.options.map((item) => item.id) },
+          },
+        });
+        await tx.productOption.deleteMany({
+          where: { tenantId, productId: id },
+        });
+        const valueIdMap = new Map<string, string>();
+        for (const [optionIndex, option] of options.entries()) {
+          const optionId = option.id ?? crypto.randomUUID();
+          await tx.productOption.create({
+            data: {
+              id: optionId,
+              tenantId,
+              productId: id,
+              name: option.name.trim(),
+              sortOrder: option.sortOrder ?? optionIndex,
+            },
+          });
+          for (const [valueIndex, value] of option.values.entries()) {
+            const valueId = value.id ?? crypto.randomUUID();
+            if (value.id) valueIdMap.set(value.id, valueId);
+            await tx.productOptionValue.create({
+              data: {
+                id: valueId,
+                tenantId,
+                productOptionId: optionId,
+                value: value.value.trim(),
+                sortOrder: value.sortOrder ?? valueIndex,
+              },
+            });
+          }
+        }
+        if (variants) {
+          const incomingIds = variants.flatMap((variant) =>
+            variant.id ? [variant.id] : [],
+          );
+          await tx.productVariant.updateMany({
+            where: { tenantId, productId: id, id: { notIn: incomingIds } },
+            data: { enabled: false, deletedAt: new Date() },
+          });
+          for (const [index, variant] of variants.entries()) {
+            const variantId = variant.id ?? crypto.randomUUID();
+            const {
+              selectedOptionValueIds,
+              id: _variantId,
+              ...variantData
+            } = variant;
+            void _variantId;
+            await tx.productVariant.upsert({
+              where: { id: variantId },
+              create: {
+                id: variantId,
+                tenantId,
+                productId: id,
+                ...variantData,
+                name: variant.name.trim(),
+                isDefault: variant.isDefault ?? index === 0,
+              },
+              update: {
+                ...variantData,
+                name: variant.name.trim(),
+                deletedAt: null,
+              },
+            });
+            for (const draftValueId of selectedOptionValueIds ?? []) {
+              await tx.productVariantOptionValue.create({
+                data: {
+                  tenantId,
+                  productVariantId: variantId,
+                  productOptionValueId:
+                    valueIdMap.get(draftValueId) ?? draftValueId,
+                },
+              });
+            }
+          }
         }
       }
     });

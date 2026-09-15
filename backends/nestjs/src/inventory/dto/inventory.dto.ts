@@ -15,11 +15,15 @@ import { PaginationDto } from '../../common/dto/pagination.dto';
 export class StockQueryDto extends PaginationDto {
   @IsOptional() @IsUUID() stockLocationId?: string;
   @IsOptional() @IsUUID() productVariantId?: string;
+  @IsOptional() @IsUUID() categoryId?: string;
+  @IsOptional() @IsString() status?: string;
 }
 
 export class MovementQueryDto extends PaginationDto {
   @IsOptional() @IsUUID() stockLocationId?: string;
   @IsOptional() @IsIn(Object.values(MovementType)) movementType?: MovementType;
+  @IsOptional() @IsString() from?: string;
+  @IsOptional() @IsString() to?: string;
 }
 
 export class CreateMovementItemDto {
@@ -32,6 +36,10 @@ export class CreateMovementItemDto {
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   unitCost?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 3 })
+  lowStockThreshold?: number;
 }
 
 export class CreateStockMovementDto {

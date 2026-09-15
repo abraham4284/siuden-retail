@@ -8,12 +8,14 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from './auth/guards/permissions.guard';
 import { CatalogModule } from './catalog/catalog.module';
 import { CustomersModule } from './customers/customers.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 import { HealthController } from './health.controller';
 import { InventoryModule } from './inventory/inventory.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { PurchasesModule } from './purchases/purchases.module';
 import { SalesModule } from './sales/sales.module';
 import { StorefrontAuthModule } from './storefront-auth/storefront-auth.module';
+import { StoreModule } from './store/store.module';
 import { UsersModule } from './users/users.module';
 
 function validateEnvironment(
@@ -42,11 +44,13 @@ function validateEnvironment(
     AccountsModule,
     CatalogModule,
     CustomersModule,
+    DashboardModule,
     InventoryModule,
     SalesModule,
     PurchasesModule,
     UsersModule,
     StorefrontAuthModule,
+    StoreModule,
   ],
   controllers: [HealthController],
   providers: [
