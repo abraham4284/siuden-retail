@@ -108,4 +108,5 @@ Las tablas SaaS de facturación, configuración visual avanzada, carritos y pedi
 - La anulación no borra el ledger: marca el movimiento original como `REVERSED` y crea `SALE_REVERSAL`.
 - Una compra creada queda `ORDERED`; `/:id/receive` recibe todo lo pendiente, registra `PURCHASE` y actualiza saldos.
 - Los números documentales se toman con bloqueo de fila y las operaciones de stock usan transacciones `SERIALIZABLE`.
--
+- 
+## Reglas de equipo
